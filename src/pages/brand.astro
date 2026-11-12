@@ -19,23 +19,13 @@ const fmt = (n: number, digits = 1) => String(Number(n.toFixed(digits)));
 const pct = (n: number) => `${fmt((n / SIDE) * 100)}%`;
 const points = (pts: [number, number][]) => pts.map(([x, y]) => `${fmt(x, 2)},${fmt(y, 2)}`).join(" ");
 
-const contents = [
-  ["logo", "Logo"],
-  ["mark", "Mark"],
-  ["lockup", "Lockup"],
-  ["space", "Clear space"],
-  ["color", "Colour"],
-  ["type", "Typography"],
-  ["misuse", "Misuse"],
-] as const;
-
 const downloads = [
   { artwork: art.lockup, label: "Lockup" },
   { artwork: art.mark, label: "Mark" },
   { artwork: art.wordmark, label: "Wordmark" },
 ];
 
-/* C-01: mark construction. */
+/* Mark construction. */
 const tipCutPoint = (() => {
   const [apex, right] = triangle;
   const len = Math.hypot(right[0] - apex[0], right[1] - apex[1]);
@@ -61,7 +51,7 @@ const markSpec = [
   ["Nut centre", "Incentre"],
 ];
 
-/* C-02: lockup construction. */
+/* Lockup construction. */
 const L = art.lockup.viewBox;
 const markRight = art.mark.viewBox.x + art.mark.viewBox.w;
 const textLeft = art.wordmark.viewBox.x;
@@ -78,7 +68,7 @@ const lockupSpec = [
   ["Lockup aspect", `${fmt(lockup.aspect, 2)} : 1`],
 ];
 
-/* S-01: clear space. */
+/* Clear space. */
 const d = clearSpace;
 const spaceFrame = `${L.x - d - 30} ${L.y - d - 30} ${L.w + 2 * d + 60} ${L.h + 2 * d + 60}`;
 const spaceLabels = [
@@ -120,14 +110,8 @@ const misuse = [
 
 <PageLayout
   heading="Brand guidelines"
-  eyebrow="Mark & wordmark"
-  intro="Start from the artwork files below. Never redraw or retype them."
+  intro="The Arize Labs identity is a mark and a two-line wordmark. Both are drawn artwork, not type, so always start from the files below rather than recreating them."
 >
-  <nav slot="header" class="contents" aria-label="On this page">
-    <ol>
-      {contents.map(([id, label]) => <li><a href={`#${id}`}>{label}</a></li>)}
-    </ol>
-  </nav>
 
   <figure class="hero">
     <BrandArt name="lockup" label="Arize Labs" />
@@ -137,25 +121,25 @@ const misuse = [
       <li><a class="button" href={artwork.url} download={artwork.file}>{label} SVG</a></li>
     ))}
   </ul>
-  <p class="note">Single colour on a transparent ground. No font needed.</p>
+  <p class="note">Each file is single-colour outlines on a transparent ground, so it needs no font and can be set in ink or paper.</p>
 
   <Section
     id="logo"
     heading="Logo"
-    intro="Use the lockup by default. Use the mark alone where space is small or square, such as avatars and favicons."
+    intro="The lockup, the mark beside the wordmark, is the default sign-off. Where there isn’t room for the wordmark, such as avatars, favicons and app icons, the mark stands alone."
   >
     <div class="grid two">
-      <figure class="panel paper"><div class="stage"><BrandArt name="lockup" label="Arize Labs lockup, ink on paper" class="lockup" /></div><figcaption><b>L-01</b> Primary · ink on paper</figcaption></figure>
-      <figure class="panel ink"><div class="stage"><BrandArt name="lockup" label="Arize Labs lockup, paper on ink" class="lockup" /></div><figcaption><b>L-02</b> Primary · paper on ink</figcaption></figure>
-      <figure class="panel paper"><div class="stage"><BrandArt name="mark" label="Arize Labs mark, ink on paper" class="mark-lg" /></div><figcaption><b>M-01</b> Mark alone · ink on paper</figcaption></figure>
-      <figure class="panel ink"><div class="stage"><BrandArt name="mark" label="Arize Labs mark, paper on ink" class="mark-lg" /></div><figcaption><b>M-02</b> Mark alone · paper on ink</figcaption></figure>
+      <figure class="panel paper"><div class="stage"><BrandArt name="lockup" label="Arize Labs lockup, ink on paper" class="lockup" /></div><figcaption>Lockup in ink, for light grounds</figcaption></figure>
+      <figure class="panel ink"><div class="stage"><BrandArt name="lockup" label="Arize Labs lockup, paper on ink" class="lockup" /></div><figcaption>Lockup in paper, for dark grounds</figcaption></figure>
+      <figure class="panel paper"><div class="stage"><BrandArt name="mark" label="Arize Labs mark, ink on paper" class="mark-lg" /></div><figcaption>Mark alone, for small or square spaces</figcaption></figure>
+      <figure class="panel ink"><div class="stage"><BrandArt name="mark" label="Arize Labs mark, paper on ink" class="mark-lg" /></div><figcaption>Mark alone, on a dark ground</figcaption></figure>
     </div>
   </Section>
 
   <Section
     id="mark"
     heading="Mark"
-    intro="Use the mark file as supplied. The construction is for reference; never rebuild or adjust the mark from it."
+    intro="The mark is an equilateral triangle with clipped tips, a hexagonal nut and a round bore at its centre. The measurements are for checking reproductions; use the supplied file rather than redrawing it."
   >
     <div class="construct">
       <figure class="panel paper">
@@ -186,7 +170,7 @@ const misuse = [
             </g>
           </svg>
         </div>
-        <figcaption><b>C-01</b> Construction</figcaption>
+        <figcaption>Construction, in units of a 1000-unit triangle side</figcaption>
       </figure>
       <table class="spec">
         <caption class="visually-hidden">Mark dimensions, in units of a 1000-unit triangle side</caption>
@@ -200,7 +184,7 @@ const misuse = [
   <Section
     id="lockup"
     heading="Lockup"
-    intro="Keep the mark and wordmark together at the scale and spacing shown. Never separate, restack or resize the wordmark."
+    intro="The wordmark is scaled so the top of the r and the foot of the l line up with the top and bottom of the triangle, a fixed gap from the mark. Scale the lockup as one piece to keep that relationship."
   >
     <div class="construct">
       <figure class="panel paper">
@@ -223,7 +207,7 @@ const misuse = [
             </g>
           </svg>
         </div>
-        <figcaption><b>C-02</b> Lockup construction</figcaption>
+        <figcaption>The wordmark spans the full height of the mark</figcaption>
       </figure>
       <table class="spec">
         <caption class="visually-hidden">Lockup dimensions, in the mark’s units</caption>
@@ -237,7 +221,7 @@ const misuse = [
   <Section
     id="space"
     heading="Clear space & minimum size"
-    intro={`Keep one bore diameter (d) clear on every side. Minimum size: ${minimumSize.mark} px for the mark, ${minimumSize.lockup} px tall for the lockup.`}
+    intro={`Leave at least one bore diameter (d) of empty space around the mark or lockup so nothing crowds it. The smallest sizes that stay legible are ${minimumSize.mark} px for the mark and ${minimumSize.lockup} px tall for the lockup.`}
   >
     <div class="grid two">
       <figure class="panel paper">
@@ -253,13 +237,13 @@ const misuse = [
             </g>
           </svg>
         </div>
-        <figcaption><b>S-01</b> Clear space = d</figcaption>
+        <figcaption>Clear space: one bore diameter (d) on every side</figcaption>
       </figure>
       <figure class="panel paper">
         <div class="stage ladder">
           {ladder.map((px) => <BrandArt name="mark" style={`height:${px}px;width:auto`} />)}
         </div>
-        <figcaption><b>S-02</b> {ladder.join(" · ")} px</figcaption>
+        <figcaption>The mark from its {ladder[0]} px minimum up to {ladder[ladder.length - 1]} px</figcaption>
       </figure>
     </div>
   </Section>
@@ -267,7 +251,7 @@ const misuse = [
   <Section
     id="color"
     heading="Colour"
-    intro="Use one colour: ink or paper, whichever contrasts more with the ground. No accents or gradients."
+    intro="The mark is always one flat colour: ink on light grounds, paper on dark ones, or pure black or white where a medium needs it. Accent colours and gradients aren’t part of the mark."
   >
     <ul class="grid four swatches">
       {swatches.map((s) => <li class:list={["swatch", s.class]}><b>{s.name}</b><span>{s.hex}</span></li>)}
@@ -283,7 +267,7 @@ const misuse = [
   <Section
     id="type"
     heading="Typography"
-    intro="Set display text in Urbanist and interface labels in monospace. Never set the wordmark in a font."
+    intro="Urbanist sets headings and body text; monospace sets labels, indices and specifications. The wordmark is drawn artwork, so typing “arize labs” in Urbanist won’t reproduce it."
   >
     <div class="specimen">
       <p class="big" aria-hidden="true">Aa</p>
@@ -294,11 +278,11 @@ const misuse = [
           </li>
         ))}
       </ul>
-      <p class="mono-sample">L-01 · 1000 u · Urbanist 600</p>
+      <p class="mono-sample">Monospace · labels, indices and specifications</p>
     </div>
   </Section>
 
-  <Section id="misuse" heading="Misuse">
+  <Section id="misuse" heading="Misuse" intro="Altering the artwork makes it read as a different mark. If a layout seems to need one of these changes, use the mark alone or a different ground instead.">
     <ul class="grid three misuse">
       {misuse.map((m) => (
         <li class:list={["misuse-tile", m.class]}>
@@ -311,26 +295,6 @@ const misuse = [
 </PageLayout>
 
 <style>
-  .contents ol {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2) var(--space-5);
-    margin-top: var(--space-6);
-    padding: 0;
-    list-style: none;
-    counter-reset: section;
-  }
-  .contents li { counter-increment: section; }
-  .contents a {
-    color: var(--dim);
-    font: 500 var(--text-micro) / 1.4 var(--font-mono);
-    letter-spacing: var(--tracking-micro);
-    text-transform: uppercase;
-    text-decoration: none;
-  }
-  .contents a::before { content: counter(section, decimal-leading-zero) " "; }
-  .contents a:hover, .contents a:focus-visible { color: var(--fg); }
-
   .hero { padding: var(--space-7) 0; border-top: 1px solid var(--fg); }
   .hero :global(svg) { max-width: 880px; }
   .downloads { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: 0; list-style: none; }
@@ -356,9 +320,7 @@ const misuse = [
     text-transform: uppercase;
   }
   figcaption { padding: 10px 14px; border-top: 1px solid var(--rule); color: var(--dim); }
-  figcaption b { margin-right: var(--space-2); padding: 2px 6px; background: var(--color-ink); color: var(--color-paper); font-weight: 500; }
   .panel.ink figcaption { border-color: #4a4545; color: #aaa49c; }
-  .panel.ink figcaption b { background: var(--color-paper); color: var(--color-ink); }
 
   /* Construction diagrams */
   .diagram { width: 100%; max-width: 640px; height: auto; overflow: visible; }
