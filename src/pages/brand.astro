@@ -72,12 +72,9 @@ const lockupFrame = `${L.x - lockupPad} ${L.y - lockupPad} ${L.w + lockupPad * 2
 const lockupSpec = [
   ["Mark height", `${fmt(lockup.markHeight)} u`],
   ["Mark → wordmark gap", `${fmt(lockup.gap, 0)} u`],
-  ["Wordmark height", "Equal to the mark"],
-  ["Top", "Top of “arize” on mark top"],
-  ["Bottom", "Bottom of “labs” on mark bottom"],
-  ["“labs” typeface", `${lockup.labs.typeface} SemiBold (${lockup.labs.weight})`],
-  ["“labs” tracking", `${lockup.labs.tracking} em`],
-  ["“labs” alignment", "Centred under “arize”"],
+  ["Top", "Top of the “r” on mark top"],
+  ["Bottom", "Foot of the “l” on mark bottom"],
+  ["Wordmark", "Drawn artwork, stacked and centred"],
   ["Lockup aspect", `${fmt(lockup.aspect, 2)} : 1`],
 ];
 
@@ -140,7 +137,7 @@ const misuse = [
       <li><a class="button" href={artwork.url} download={artwork.file}>{label} SVG</a></li>
     ))}
   </ul>
-  <p class="note">Files are single-colour black on a transparent ground, with “labs” converted to outlines, so they need no font.</p>
+  <p class="note">Files are single-colour black on a transparent ground, with the wordmark drawn as outlines, so they need no font.</p>
 
   <Section
     id="logo"
@@ -203,7 +200,7 @@ const misuse = [
   <Section
     id="lockup"
     heading="Lockup"
-    intro="The wordmark block is scaled as a unit to span the mark: the top of arize is flush with the top of the triangle, and the bottom of labs with its bottom edge. labs is set in Urbanist; arize is drawn artwork and is never retyped."
+    intro="The wordmark block is scaled as a unit to span the mark: the top of the r in arize is flush with the top of the triangle, and the foot of the l in labs with its bottom edge. arize and labs are drawn artwork, stacked and centred, and never retyped."
   >
     <div class="construct">
       <figure class="panel paper">
@@ -286,18 +283,18 @@ const misuse = [
   <Section
     id="type"
     heading="Typography"
-    intro="Urbanist is the wordmark typeface and the brand display face. Interface labels, indices and specifications are set in monospace."
+    intro="Urbanist is the brand display face. The wordmark is drawn artwork, not set in it. Interface labels, indices and specifications are set in monospace."
   >
     <div class="specimen">
-      <p class="big" aria-hidden="true">labs</p>
+      <p class="big" aria-hidden="true">Aa</p>
       <ul class="weights">
         {weights.map(([w, name]) => (
-          <li class:list={{ on: w === lockup.labs.weight }} style={`font-weight:${w}`}>
-            labs<small>{w} · {name}</small>
+          <li style={`font-weight:${w}`}>
+            Aa<small>{w} · {name}</small>
           </li>
         ))}
       </ul>
-      <p class="mono-sample">L-01 · 1000 u · 0.02 em · Urbanist 600</p>
+      <p class="mono-sample">L-01 · 1000 u · Urbanist 600</p>
     </div>
   </Section>
 
@@ -397,7 +394,7 @@ const misuse = [
 
   /* Typography */
   .specimen { padding-top: var(--space-5); border-top: 1px solid var(--fg); }
-  .big { font: 600 clamp(120px, 22vw, 280px) / 1 var(--font-sans); letter-spacing: 0.02em; }
+  .big { font: 600 clamp(120px, 22vw, 280px) / 1 var(--font-sans); }
   .weights {
     display: grid;
     grid-template-columns: repeat(9, minmax(0, 1fr));
@@ -408,7 +405,6 @@ const misuse = [
     list-style: none;
   }
   .weights li { padding-bottom: var(--space-2); border-bottom: 2px solid transparent; font-size: clamp(28px, 3.4vw, 48px); line-height: 1.1; }
-  .weights li.on { border-color: var(--fg); }
   .weights small { display: block; color: var(--dim); line-height: 1.8; }
   .mono-sample { margin-top: var(--space-6); color: var(--soft); }
 
