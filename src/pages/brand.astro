@@ -121,7 +121,7 @@ const misuse = [
 <PageLayout
   heading="Brand guidelines"
   eyebrow="Mark & wordmark"
-  intro="How to use the Arize Labs mark and lockup. Always start from the artwork files below. Never redraw or retype them."
+  intro="Start from the artwork files below. Never redraw or retype them."
 >
   <nav slot="header" class="contents" aria-label="On this page">
     <ol>
@@ -137,12 +137,12 @@ const misuse = [
       <li><a class="button" href={artwork.url} download={artwork.file}>{label} SVG</a></li>
     ))}
   </ul>
-  <p class="note">Files are single-colour black on a transparent ground, with the wordmark drawn as outlines, so they need no font.</p>
+  <p class="note">Single colour on a transparent ground. No font needed.</p>
 
   <Section
     id="logo"
     heading="Logo"
-    intro="The primary lockup places the mark to the left of the Arize wordmark, with labs set beneath it. Use ink on paper or paper on ink. Use the mark alone in small, square or avatar contexts."
+    intro="Use the lockup by default. Use the mark alone where space is small or square, such as avatars and favicons."
   >
     <div class="grid two">
       <figure class="panel paper"><div class="stage"><BrandArt name="lockup" label="Arize Labs lockup, ink on paper" class="lockup" /></div><figcaption><b>L-01</b> Primary · ink on paper</figcaption></figure>
@@ -155,7 +155,7 @@ const misuse = [
   <Section
     id="mark"
     heading="Mark"
-    intro="An equilateral triangle on a 1000-unit side. The tips are clipped, a hexagonal nut is cut out at the incentre, and a round bore sits inside the nut. Wall, gap and bore are proportions of one another; the triangle is fixed and they scale to fit it."
+    intro="Use the mark file as supplied. The construction is for reference; never rebuild or adjust the mark from it."
   >
     <div class="construct">
       <figure class="panel paper">
@@ -200,7 +200,7 @@ const misuse = [
   <Section
     id="lockup"
     heading="Lockup"
-    intro="The wordmark block is scaled as a unit to span the mark: the top of the r in arize is flush with the top of the triangle, and the foot of the l in labs with its bottom edge. arize and labs are drawn artwork, stacked and centred, and never retyped."
+    intro="Keep the mark and wordmark together at the scale and spacing shown. Never separate, restack or resize the wordmark."
   >
     <div class="construct">
       <figure class="panel paper">
@@ -237,7 +237,7 @@ const misuse = [
   <Section
     id="space"
     heading="Clear space & minimum size"
-    intro={`Keep a clear margin of one bore diameter (d) on every side. Never show the mark alone below ${minimumSize.mark} px, or the lockup below ${minimumSize.lockup} px tall.`}
+    intro={`Keep one bore diameter (d) clear on every side. Minimum size: ${minimumSize.mark} px for the mark, ${minimumSize.lockup} px tall for the lockup.`}
   >
     <div class="grid two">
       <figure class="panel paper">
@@ -267,7 +267,7 @@ const misuse = [
   <Section
     id="color"
     heading="Colour"
-    intro="The mark is a single colour, with no accent and no gradient. Use whichever pairing has more contrast with the ground."
+    intro="Use one colour: ink or paper, whichever contrasts more with the ground. No accents or gradients."
   >
     <ul class="grid four swatches">
       {swatches.map((s) => <li class:list={["swatch", s.class]}><b>{s.name}</b><span>{s.hex}</span></li>)}
@@ -283,7 +283,7 @@ const misuse = [
   <Section
     id="type"
     heading="Typography"
-    intro="Urbanist is the brand display face. The wordmark is drawn artwork, not set in it. Interface labels, indices and specifications are set in monospace."
+    intro="Set display text in Urbanist and interface labels in monospace. Never set the wordmark in a font."
   >
     <div class="specimen">
       <p class="big" aria-hidden="true">Aa</p>
