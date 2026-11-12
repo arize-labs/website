@@ -77,12 +77,15 @@ const jsonLd =
 
 <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
 
-<!-- Set the theme before first paint so there is no flash. -->
+<!-- Set the theme before first paint so there is no flash. A saved "light" or
+     "dark" wins; otherwise (Auto) follow the system preference. -->
 <script is:inline>
   (() => {
-    let theme = null;
-    try { theme = localStorage.getItem("theme"); } catch {}
+    let saved = null;
+    try { saved = localStorage.getItem("theme"); } catch {}
     document.documentElement.dataset.theme =
-      theme ?? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      saved === "light" || saved === "dark"
+        ? saved
+        : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   })();
 </script>

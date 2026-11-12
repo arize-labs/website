@@ -1,6 +1,7 @@
 ---
 import { site } from "../site.config";
 import ArizeLogo from "../assets/arize/arize-logo.svg";
+import ThemeToggle from "./ThemeToggle.astro";
 
 const year = new Date().getFullYear();
 const social = Object.entries(site.social);
@@ -19,7 +20,10 @@ const social = Object.entries(site.social);
     <ul class="links">
       {social.map(([name, href]) => <li><a href={href} rel="me noopener">{name}</a></li>)}
     </ul>
-    <p class="eyebrow">© {year} {site.parent.name}</p>
+    <div class="legal">
+      <p class="eyebrow">© {year} {site.parent.name}</p>
+      <ThemeToggle />
+    </div>
   </div>
 </footer>
 
@@ -46,7 +50,7 @@ const social = Object.entries(site.social);
     text-decoration: none;
   }
   .links a:hover { color: var(--fg); }
-  .inner > .eyebrow { grid-column: 1 / -1; }
+  .legal { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-4); }
 
   @media (max-width: 720px) {
     .site-footer { padding-top: var(--space-8); }

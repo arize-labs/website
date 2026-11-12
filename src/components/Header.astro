@@ -1,7 +1,6 @@
 ---
 import { site } from "../site.config";
 import Wordmark from "./Wordmark.astro";
-import ThemeToggle from "./ThemeToggle.astro";
 
 const path = Astro.url.pathname;
 const isCurrent = (href: string) => !href.includes("#") && (path === href || path.startsWith(`${href}/`));
@@ -17,7 +16,6 @@ const isCurrent = (href: string) => !href.includes("#") && (path === href || pat
           <li><a href={item.href} aria-current={isCurrent(item.href) ? "page" : undefined}>{item.label}</a></li>
         ))}
       </ul>
-      <ThemeToggle />
     </nav>
 
     <!-- Phone menu: a disclosure, so it works without JavaScript. -->
@@ -29,7 +27,6 @@ const isCurrent = (href: string) => !href.includes("#") && (path === href || pat
             <li><a href={item.href} aria-current={isCurrent(item.href) ? "page" : undefined}>{item.label}</a></li>
           ))}
         </ul>
-        <ThemeToggle />
       </div>
     </details>
   </div>
