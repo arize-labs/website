@@ -1,0 +1,117 @@
+/**
+ * Arize Labs mark and lockup specification.
+ *
+ * The artwork in `src/assets/brand/` is generated from these values by the
+ * prototype's `brand/build.mjs`. "labs" is converted to outlines from the
+ * static Urbanist SemiBold file (v1.303), so the files need no font. This
+ * module reads that artwork for the guidelines page and derives the
+ * construction geometry used in its diagrams.
+ */
+import markSvg from "../assets/brand/arize-labs-mark.svg?raw";
+import lockupSvg from "../assets/brand/arize-labs-lockup.svg?raw";
+import wordmarkSvg from "../assets/brand/arize-labs-wordmark.svg?raw";
+import markUrl from "../assets/brand/arize-labs-mark.svg?url";
+import lockupUrl from "../assets/brand/arize-labs-lockup.svg?url";
+import wordmarkUrl from "../assets/brand/arize-labs-wordmark.svg?url";
+
+export interface ViewBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface Artwork {
+  /** File name offered on download. */
+  file: string;
+  url: string;
+  viewBox: ViewBox;
+  /** The SVG's children, without the root element or its title. */
+  body: string;
+}
+
+function artwork(file: string, url: string, raw: string): Artwork {
+  const vb = raw.match(/viewBox="([^"]+)"/)?.[1].trim().split(/\s+/).map(Number);
+  if (!vb || vb.length !== 4 || vb.some((n) => !Number.isFinite(n))) {
+    throw new Error(`${file}: missing or malformed viewBox`);
+  }
+  const body = raw
+    .replace(/^[\s\S]*?<svg[^>]*>/, "")
+    .replace(/<\/svg>\s*$/, "")
+    .replace(/<title>[\s\S]*?<\/title>/, "");
+  const [x, y, w, h] = vb;
+  return { file, url, viewBox: { x, y, w, h }, body };
+}
+
+export const art = {
+  mark: artwork("arize-labs-mark.svg", markUrl, markSvg),
+  lockup: artwork("arize-labs-lockup.svg", lockupUrl, lockupSvg),
+  wordmark: artwork("arize-labs-wordmark.svg", wordmarkUrl, wordmarkSvg),
+} as const;
+
+export type ArtworkName = keyof typeof art;
+
+export const colors = {
+  ink: "#231F20",
+  paper: "#F6F5F2",
+  white: "#FFFFFF",
+  black: "#000000",
+} as const;
+
+/* Mark: an equilateral triangle on a 1000-unit side, centred on its incentre. */
+
+/** Triangle side, in units. */
+export const SIDE = 1000;
+/** Inradius: incentre to the middle of each edge. */
+export const INRADIUS = SIDE / (2 * Math.sqrt(3));
+
+const BORE = 80;
+const WALL = (INRADIUS - BORE) / 2;
+
+export const mark = {
+  /** Distance cut from each tip, along both sides. */
+  tipCut: 125,
+  outerRadius: 25,
+  nutRadius: 50,
+  /** Triangle edge to nut flat. */
+  wall: WALL,
+  /** Nut flat to bore. Equal to the wall. */
+  gap: WALL,
+  boreRadius: BORE,
+  /** Nut apothem: incentre to the middle of a nut flat. */
+  nutApothem: INRADIUS - WALL,
+  /** Nut circumradius: incentre to a nut corner. */
+  nutRadiusOuter: (INRADIUS - WALL) / Math.cos(Math.PI / 6),
+};
+
+export const triangle: [number, number][] = [
+  [0, -2 * INRADIUS],
+  [SIDE / 2, INRADIUS],
+  [-SIDE / 2, INRADIUS],
+];
+
+export const nut: [number, number][] = Array.from({ length: 6 }, (_, i) => [
+  mark.nutRadiusOuter * Math.cos((i * Math.PI) / 3),
+  mark.nutRadiusOuter * Math.sin((i * Math.PI) / 3),
+]);
+
+/** Clear space on every side of the mark or lockup: one bore diameter. */
+export const clearSpace = 2 * mark.boreRadius;
+
+/* Lockup: mark on the left, wordmark block on the right. */
+
+const markBox = art.mark.viewBox;
+
+export const lockup = {
+  /** Horizontal gap from the mark's right edge to the wordmark. */
+  gap: art.wordmark.viewBox.x - (markBox.x + markBox.w),
+  /** y of the mark's bottom edge, which is also the lowest ink of "labs". */
+  bottom: markBox.y + markBox.h,
+  /** y of the mark's top edge, which is also the top of "arize". */
+  top: markBox.y,
+  markHeight: markBox.h,
+  labs: { typeface: "Urbanist", weight: 600, tracking: 0.02 },
+  aspect: art.lockup.viewBox.w / art.lockup.viewBox.h,
+};
+
+export const minimumSize = { mark: 16, lockup: 24 };
