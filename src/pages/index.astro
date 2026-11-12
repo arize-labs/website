@@ -12,9 +12,9 @@ import { getPosts, getTeam } from "../lib/content";
 import { site } from "../site.config";
 
 const pillars = [
-  { name: "Open Tooling", body: "Universal access to AI tools with best practices built in, so building AI well isn't a privilege of the few." },
-  { name: "Open Evals", body: "Honest, shared ways to measure whether AI actually works, so anyone can check the progress for themselves." },
-  { name: "Open Research", body: "Findings shared as we go, to educate the field and to learn from everyone building with AI." },
+  { name: "Open Tooling", body: "Open-source tools for building AI applications, with good practices built in." },
+  { name: "Open Evals", body: "Published evaluations, with the harness and data behind them, so anyone can check the results." },
+  { name: "Open Research", body: "Experiments shared while in progress, with write-ups of what worked and what didn't." },
 ];
 
 const projects = [
@@ -41,8 +41,8 @@ const rulerRuns: Run[] = [
 ];
 
 const latestPosts = (await getPosts()).slice(0, 3);
-// Two full rows of the three-up grid.
-const team = (await getTeam()).slice(0, 6);
+// Everyone, in `order`: technical staff first, advisors last.
+const team = await getTeam();
 ---
 
 <BaseLayout description={site.description}>
@@ -62,7 +62,7 @@ const team = (await getTeam()).slice(0, 6);
     <PostGrid posts={latestPosts} />
   </Section>
 
-  <Section id="team" heading="Team" intro="The engineers, researchers and designers who build Phoenix and OpenInference.">
+  <Section id="team" heading="Team" intro="The engineers, researchers and designers behind Arize Labs.">
     <a slot="action" class="button" href="/team">Meet the team</a>
     <TeamGrid members={team} />
   </Section>

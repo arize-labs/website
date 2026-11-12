@@ -13,7 +13,7 @@ const { name, role, avatar } = member.data;
 <article class="member">
   <a href={memberUrl(member)}>
     <figure class="headshot">
-      {avatar ? <Image src={avatar} alt="" widths={[360, 720]} sizes="(max-width: 720px) 50vw, min(33vw, 360px)" /> : <span class="placeholder">[ photo ]</span>}
+      {avatar ? <Image src={avatar} alt="" widths={[360, 720]} sizes="(max-width: 720px) 50vw, (max-width: 1100px) 33vw, 270px" /> : <span class="placeholder">[ photo ]</span>}
     </figure>
     <h3>{name}</h3>
   </a>
@@ -26,6 +26,8 @@ const { name, role, avatar } = member.data;
   a:hover h3 { text-decoration: underline; text-underline-offset: 3px; }
   .headshot { margin-bottom: var(--space-3); aspect-ratio: 4 / 5; overflow: hidden; background: var(--surface); border: 1px solid var(--rule); }
   .headshot img, .headshot .placeholder { width: 100%; height: 100%; object-fit: cover; }
+  /* Headshots are shown in black and white, whatever the source photo. */
+  .headshot img { filter: grayscale(1); }
   h3 { margin-bottom: 2px; font: 600 var(--text-h4) / 1.2 var(--font-sans); }
   p { color: var(--soft); font-size: var(--text-small); line-height: 1.45; }
 </style>

@@ -6,6 +6,7 @@ export const site = {
   /** The company behind Labs: footer logo, link and copyright holder. */
   parent: { name: "Arize AI", url: "https://arize.com" },
   nav: [
+    { label: "Mission", href: "/mission" },
     { label: "Projects", href: "/#projects" },
     { label: "Blog", href: "/blog" },
     { label: "Team", href: "/team" },

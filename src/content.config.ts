@@ -37,4 +37,15 @@ const posts = defineCollection({
     }),
 });
 
-export const collections = { team, posts };
+/** Standalone pages whose copy lives in Markdown (mission, about, ...). */
+const pages = defineCollection({
+  loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/pages" }),
+  schema: z.object({
+    title: z.string(),
+    description: z.string(),
+    eyebrow: z.string().optional(),
+    updatedDate: z.coerce.date().optional(),
+  }),
+});
+
+export const collections = { team, posts, pages };

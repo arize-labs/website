@@ -2,7 +2,7 @@
 title: What's new in Phoenix
 description: A running log of features, fixes and breaking changes across Phoenix releases.
 pubDate: 2026-11-05
-authors: [member-2]
+authors: [mikyo-king]
 tags: [phoenix, release-notes]
 ---
 

@@ -2,7 +2,7 @@
 title: An open frontier
 description: Why Arize Labs exists, and what we mean by building in the open.
 pubDate: 2026-11-10
-authors: [member-1]
+authors: [mikyo-king]
 tags: [lab, open-source]
 ---
 
@@ -11,15 +11,14 @@ make AI work for humanity. The work falls into three threads.
 
 ## Open tooling
 
-Universal access to AI tools with best practices built in, so building AI well
-isn't a privilege of the few.
+Open-source tools for building AI applications, with good practices built in.
 
 ## Open evals
 
-Honest, shared ways to measure whether AI actually works, so anyone can check
-the progress for themselves.
+Published evaluations, with the harness and data behind them, so anyone can
+check the results.
 
 ## Open research
 
-Findings shared as we go, to educate the field and to learn from everyone
-building with AI.
+Experiments shared while in progress, with write-ups of what worked and what
+didn't.
