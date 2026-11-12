@@ -1,9 +1,11 @@
 ---
 import HeroPlaceholder from "../heroes/HeroPlaceholder.astro";
+import HeroMark from "../heroes/HeroMark.astro";
 
 /**
  * Landing hero: a full-bleed art band that fades into the page, followed by
- * the page's h1 and lede. Pass art through the `art` slot.
+ * the page's h1 and lede. The live glass mark sits over the band; pass the
+ * background art beneath it through the `art` slot.
  */
 export interface Props {
   heading: string;
@@ -15,6 +17,7 @@ const { heading, lede } = Astro.props;
 <section class="hero page-grid bleed" aria-labelledby="hero-heading">
   <div class="art bleed">
     <slot name="art"><HeroPlaceholder /></slot>
+    <HeroMark />
   </div>
   <div class="copy">
     <h1 id="hero-heading">{heading}</h1>
@@ -25,6 +28,7 @@ const { heading, lede } = Astro.props;
 
 <style>
   .art {
+    position: relative;
     height: min(78vh, 720px);
     overflow: hidden;
     mask-image: linear-gradient(to bottom, #000 55%, transparent);

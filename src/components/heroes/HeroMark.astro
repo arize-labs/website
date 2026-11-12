@@ -1,0 +1,56 @@
+---
+/**
+ * The hero's glass mark, drawn live in WebGL over whatever art fills the
+ * hero band (see hero-mark.ts). Place it inside a positioned element that
+ * clips (the hero's art band); it lays itself out within that element.
+ *
+ * Without WebGL2, or without JavaScript, an outlined SVG of the mark stands
+ * in at the same size and position.
+ */
+import BrandArt from "../brand/BrandArt.astro";
+---
+
+<div class="hero-mark" data-hero-mark aria-hidden="true">
+  <canvas></canvas>
+  <BrandArt name="mark" class="hero-mark-fallback" />
+  <noscript><style>.hero-mark-fallback { display: block !important; }</style></noscript>
+</div>
+
+<style>
+  .hero-mark {
+    position: absolute;
+    inset: 0;
+    container-type: size;
+    pointer-events: none;
+  }
+  canvas { position: absolute; pointer-events: auto; }
+
+  /* Same fit as the canvas: 75% of the band's width or 69% of its height,
+     centred 44% down. */
+  .hero-mark :global(.hero-mark-fallback) {
+    display: none;
+    position: absolute;
+    left: 50%;
+    top: 44%;
+    width: min(75cqw, 69cqh * 867.26 / 757.77);
+    height: auto;
+    translate: -50% -50%;
+    color: var(--fg);
+    opacity: 0.7;
+  }
+  .hero-mark[data-fallback] :global(.hero-mark-fallback) { display: block; }
+  .hero-mark[data-fallback] canvas { display: none; }
+  .hero-mark :global(.hero-mark-fallback g) { fill: none; stroke: currentColor; }
+  .hero-mark :global(.hero-mark-fallback path) { stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+</style>
+
+<script>
+  import { mountHeroMark } from "./hero-mark";
+
+  for (const host of document.querySelectorAll<HTMLElement>("[data-hero-mark]")) {
+    const band = host.parentElement!;
+    const canvas = host.querySelector("canvas")!;
+    const fallBack = () => (host.dataset.fallback = "");
+    if (!mountHeroMark(band, canvas, fallBack)) fallBack();
+  }
+</script>
