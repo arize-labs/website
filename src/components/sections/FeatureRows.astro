@@ -13,7 +13,7 @@ const { items } = Astro.props;
   {items.map((item, i) => (
     <article class:list={["feature", i % 2 ? "art-right" : "art-left"]}>
       <figure class="art placeholder" aria-hidden="true">[ art ]</figure>
-      <div class="text">
+      <div class="text tick-card">
         <h3>{item.name}</h3>
         <p>{item.body}</p>
         {item.href && <a class="button" href={item.href}>{item.cta ?? "Learn more"}</a>}
@@ -33,16 +33,26 @@ const { items } = Astro.props;
   .art-right { grid-template-columns: minmax(0, 44fr) minmax(0, 56fr); }
   .art-right .art { order: 2; }
   .art { aspect-ratio: 1; max-height: 620px; }
+  /* Wide: the text sits bare beside the art. */
+  .text.tick-card { --card: transparent; --tick-len: 0px; }
   h3 { margin-bottom: var(--space-4); font: 600 var(--text-feature) / 1.05 var(--font-sans); letter-spacing: var(--tracking-tight); }
   p { color: var(--soft); font-size: var(--text-body-lg); line-height: 1.5; }
   .button { margin-top: 28px; }
 
   @media (max-width: 840px) {
     .features { gap: var(--space-8); }
-    .feature, .art-right { grid-template-columns: minmax(0, 1fr); gap: var(--space-5); }
+    .feature, .art-right { grid-template-columns: minmax(0, 1fr); gap: 0; }
     .art-right .art { order: 0; }
-    .art { aspect-ratio: 4 / 3; }
-    .text { max-width: 560px; }
+    .art { aspect-ratio: 4 / 3; mask-image: linear-gradient(to bottom, #000 70%, transparent); }
+    /* Narrow: the text becomes a card laid over the foot of the art. */
+    .feature .text.tick-card {
+      --card: var(--card-solid);
+      --tick-len: 10px;
+      position: relative;
+      width: min(560px, 100% - 2 * var(--space-5));
+      margin: -72px auto 0;
+      padding: var(--space-5) 22px 26px;
+    }
   }
 
   @media (max-width: 720px) {

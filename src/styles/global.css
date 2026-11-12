@@ -52,6 +52,23 @@ a { color: inherit; }
 }
 .button:hover, .button:focus-visible { background: var(--fg); color: var(--bg); }
 
+/*
+ * Contact-sheet card: a faint fill framed only by 10px corner ticks, drawn
+ * as background layers so it needs no extra markup. Override --card to
+ * change the fill (e.g. var(--card-solid) over art).
+ */
+.tick-card {
+  --tick-len: 10px;
+  --t: linear-gradient(var(--tick), var(--tick));
+  background:
+    var(--t) top left / var(--tick-len) 1px, var(--t) top left / 1px var(--tick-len),
+    var(--t) top right / var(--tick-len) 1px, var(--t) top right / 1px var(--tick-len),
+    var(--t) bottom left / var(--tick-len) 1px, var(--t) bottom left / 1px var(--tick-len),
+    var(--t) bottom right / var(--tick-len) 1px, var(--t) bottom right / 1px var(--tick-len),
+    var(--card);
+  background-repeat: no-repeat;
+}
+
 /* An empty frame that stands in for art until the design supplies it. */
 .placeholder {
   display: grid;

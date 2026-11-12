@@ -6,6 +6,8 @@ import Pillars from "../components/sections/Pillars.astro";
 import FeatureRows from "../components/sections/FeatureRows.astro";
 import PostGrid from "../components/sections/PostGrid.astro";
 import TeamGrid from "../components/sections/TeamGrid.astro";
+import PageMarkings from "../components/PageMarkings.astro";
+import type { Run } from "../components/PageMarkings.astro";
 import { getPosts, getTeam } from "../lib/content";
 import { site } from "../site.config";
 
@@ -30,11 +32,20 @@ const projects = [
   },
 ];
 
+// Gutter rulers: from under the hero art to the first project, and from the
+// news section into the team grid. The mission pillars belong to the hero
+// beat, so their section gets no registration cross.
+const rulerRuns: Run[] = [
+  { from: [".hero .art", "bottom"], to: ["#projects .feature", "top"], fadeIn: 96, fadeOut: 160 },
+  { from: ["#news", "top"], to: ["#team .member", "middle"], fadeIn: 96, fadeOut: 0.4 },
+];
+
 const latestPosts = (await getPosts()).slice(0, 3);
 const team = (await getTeam()).slice(0, 8);
 ---
 
 <BaseLayout description={site.description}>
+  <PageMarkings runs={rulerRuns} marks="main > section:not(#mission)" />
   <Hero heading="An Open Frontier" lede={site.description} />
 
   <Section id="mission" class="mission">
@@ -45,7 +56,7 @@ const team = (await getTeam()).slice(0, 8);
     <FeatureRows items={projects} />
   </Section>
 
-  <Section id="writing" heading="Writing" intro="News, writing and resources about the open-source projects.">
+  <Section id="news" heading="News" intro="News, writing and resources about the open-source projects.">
     <a slot="action" class="button" href="/blog">All posts</a>
     <PostGrid posts={latestPosts} />
   </Section>
