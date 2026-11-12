@@ -1,34 +1,85 @@
-<button type="button" class="theme-toggle" data-theme-toggle aria-label="Toggle light and dark mode">
-  <span data-theme-label>Theme</span>
-</button>
+---
+/**
+ * Theme switch: Auto (the default) follows the system preference; Light and
+ * Dark override it and are saved per browser. BaseHead applies the saved
+ * choice before first paint. Hidden until the script runs, since it needs JS.
+ */
+const options = [
+  ["auto", "Auto"],
+  ["light", "Light"],
+  ["dark", "Dark"],
+] as const;
+---
+
+<fieldset class="theme-switch" data-theme-switch hidden>
+  <legend class="visually-hidden">Theme</legend>
+  {options.map(([value, label]) => (
+    <label>
+      <input type="radio" name="theme" value={value} />
+      <span>{label}</span>
+    </label>
+  ))}
+</fieldset>
 
 <style>
-  .theme-toggle {
-    padding: 5px 9px;
-    background: none;
-    border: 1px solid var(--rule);
-    color: var(--fg);
+  /* Segmented control: the selected option sits inset within the border, and
+     the focus ring stays inside the 2px padding rather than spilling over it. */
+  .theme-switch { display: inline-flex; gap: 2px; margin: 0; padding: 2px; border: 1px solid var(--rule); }
+  .theme-switch[hidden] { display: none; }
+  label { position: relative; display: block; cursor: pointer; }
+  input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+  span {
+    display: block;
+    padding: 5px 8px;
+    color: var(--dim);
     font: 500 var(--text-micro) / 1 var(--font-mono);
     letter-spacing: var(--tracking-micro);
     text-transform: uppercase;
-    cursor: pointer;
   }
-  .theme-toggle:hover { border-color: var(--fg); }
+  label:hover span { color: var(--fg); }
+  input:checked + span { background: var(--fg); color: var(--bg); }
+  input:focus-visible + span { outline: 1px solid var(--accent); outline-offset: 1px; }
 </style>
 
 <script>
+  type Preference = "auto" | "light" | "dark";
+  const KEY = "theme";
   const root = document.documentElement;
-  const sync = () => {
-    const label = root.dataset.theme === "dark" ? "Light mode" : "Dark mode";
-    document.querySelectorAll("[data-theme-label]").forEach((el) => (el.textContent = label));
+  const systemDark = matchMedia("(prefers-color-scheme: dark)");
+
+  const read = (): Preference => {
+    try {
+      const value = localStorage.getItem(KEY);
+      return value === "light" || value === "dark" ? value : "auto";
+    } catch {
+      return "auto";
+    }
   };
-  document.querySelectorAll("[data-theme-toggle]").forEach((button) =>
-    button.addEventListener("click", () => {
-      const next = root.dataset.theme === "dark" ? "light" : "dark";
-      root.dataset.theme = next;
-      try { localStorage.setItem("theme", next); } catch {}
-      sync();
-    }),
-  );
-  sync();
+
+  const save = (preference: Preference) => {
+    try {
+      if (preference === "auto") localStorage.removeItem(KEY);
+      else localStorage.setItem(KEY, preference);
+    } catch {}
+  };
+
+  const apply = (preference: Preference) => {
+    root.dataset.theme = preference === "auto" ? (systemDark.matches ? "dark" : "light") : preference;
+  };
+
+  // In Auto, follow the system as it changes (e.g. at sunset).
+  systemDark.addEventListener("change", () => {
+    if (read() === "auto") apply("auto");
+  });
+
+  document.querySelectorAll<HTMLFieldSetElement>("[data-theme-switch]").forEach((group) => {
+    const current = read();
+    group.querySelectorAll<HTMLInputElement>("input").forEach((input) => (input.checked = input.value === current));
+    group.addEventListener("change", (event) => {
+      const preference = (event.target as HTMLInputElement).value as Preference;
+      save(preference);
+      apply(preference);
+    });
+    group.hidden = false;
+  });
 </script>

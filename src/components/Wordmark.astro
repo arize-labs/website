@@ -1,14 +1,11 @@
 ---
-// Text stand-in for the logo. Swap in the brand SVG once the design lands.
+// The Arize Labs lockup, sized as a logo. It takes the surrounding text colour.
+import BrandArt from "./brand/BrandArt.astro";
 ---
 
-<span class="wordmark">arize labs</span>
+<BrandArt name="lockup" label="Arize Labs" class="wordmark" />
 
 <style>
-  .wordmark {
-    font: 600 20px / 1 var(--font-sans);
-    letter-spacing: -0.02em;
-    text-transform: lowercase;
-    white-space: nowrap;
-  }
+  /* 34px matches the prototype header; never below the 24px lockup minimum. */
+  :global(.wordmark) { display: block; width: auto; height: 34px; }
 </style>

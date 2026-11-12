@@ -1,6 +1,7 @@
 ---
 import { site } from "../site.config";
-import Wordmark from "./Wordmark.astro";
+import ArizeLogo from "../assets/arize/arize-logo.svg";
+import ThemeToggle from "./ThemeToggle.astro";
 
 const year = new Date().getFullYear();
 const social = Object.entries(site.social);
@@ -8,7 +9,9 @@ const social = Object.entries(site.social);
 
 <footer class="site-footer page-grid">
   <div class="inner">
-    <a class="home" href="/"><Wordmark /></a>
+    <a class="home" href={site.parent.url} aria-label={site.parent.name}>
+      <ArizeLogo aria-hidden="true" />
+    </a>
     <ul class="links">
       {site.nav.map((item) => <li><a href={item.href}>{item.label}</a></li>)}
       <li><a href="/brand">Brand</a></li>
@@ -17,7 +20,10 @@ const social = Object.entries(site.social);
     <ul class="links">
       {social.map(([name, href]) => <li><a href={href} rel="me noopener">{name}</a></li>)}
     </ul>
-    <p class="eyebrow">© {year} {site.name}</p>
+    <div class="legal">
+      <p class="eyebrow">© {year} {site.parent.name}</p>
+      <ThemeToggle />
+    </div>
   </div>
 </footer>
 
@@ -31,7 +37,10 @@ const social = Object.entries(site.social);
     padding-top: var(--space-6);
     border-top: 1px solid var(--rule);
   }
-  .home { color: var(--fg); text-decoration: none; }
+  /* The official Arize lockup, shown in one colour that follows the theme. */
+  .home { justify-self: start; color: var(--fg); }
+  .home svg { display: block; width: auto; height: 32px; }
+  .home :global(path) { fill: currentColor; }
   .links { display: grid; gap: var(--space-2); padding: 0; list-style: none; }
   .links a {
     color: var(--dim);
@@ -41,7 +50,7 @@ const social = Object.entries(site.social);
     text-decoration: none;
   }
   .links a:hover { color: var(--fg); }
-  .inner > .eyebrow { grid-column: 1 / -1; }
+  .legal { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-4); }
 
   @media (max-width: 720px) {
     .site-footer { padding-top: var(--space-8); }
