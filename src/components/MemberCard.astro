@@ -13,7 +13,7 @@ const { name, role, avatar } = member.data;
 <article class="member">
   <a href={memberUrl(member)}>
     <figure class="headshot">
-      {avatar ? <Image src={avatar} alt="" widths={[320, 640]} sizes="(max-width: 720px) 50vw, 25vw" /> : <span class="placeholder">[ photo ]</span>}
+      {avatar ? <Image src={avatar} alt="" widths={[360, 720]} sizes="(max-width: 720px) 50vw, min(33vw, 360px)" /> : <span class="placeholder">[ photo ]</span>}
     </figure>
     <h3>{name}</h3>
   </a>

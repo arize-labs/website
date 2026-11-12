@@ -41,7 +41,8 @@ const rulerRuns: Run[] = [
 ];
 
 const latestPosts = (await getPosts()).slice(0, 3);
-const team = (await getTeam()).slice(0, 8);
+// Two full rows of the three-up grid.
+const team = (await getTeam()).slice(0, 6);
 ---
 
 <BaseLayout description={site.description}>
