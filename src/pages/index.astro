@@ -21,15 +21,17 @@ const pillars = [
 const projects = [
   {
     name: "Arize Phoenix",
+    scene: "phoenix" as const,
     href: "https://github.com/Arize-ai/phoenix",
     cta: "View on GitHub",
-    body: "An open-source platform for AI observability and evaluation. Phoenix traces LLM applications and agents end to end, runs evaluations against those traces, and turns what it finds into datasets, experiments and prompt iterations. It runs locally, in a notebook or self-hosted, and is built on OpenTelemetry.",
+    body: "An open-source platform for AI observability and evaluation. Phoenix traces agents end to end and turns those traces into context for evaluating and improving them: evaluations run against real agent runs, and what they find becomes datasets, experiments and prompt iterations. It runs locally or self-hosted, and is built on OpenTelemetry.",
   },
   {
     name: "OpenInference",
+    scene: "rack" as const,
     href: "https://github.com/Arize-ai/openinference",
     cta: "View on GitHub",
-    body: "A set of semantic conventions and instrumentation libraries, complementary to OpenTelemetry, for tracing agents. OpenInference defines how LLM calls, retrievals, tool use and agent steps are recorded, and ships auto-instrumentation for popular model providers and frameworks across Python, JavaScript and Java.",
+    body: "A set of semantic conventions and instrumentation libraries, complementary to OpenTelemetry, for agent observability. OpenInference defines how LLM calls, retrievals, tool use and agent steps are recorded, and ships auto-instrumentation for popular model providers and frameworks across Python, JavaScript, Java and Go.",
   },
 ];
 
@@ -42,7 +44,7 @@ const rulerRuns: Run[] = [
 ];
 
 const latestPosts = (await getPosts()).slice(0, 3);
-// Everyone, in `order`: technical staff first, advisors last.
+// Everyone, in `order`: advisors first, then the technical staff.
 const team = await getTeam();
 ---
 
@@ -56,7 +58,7 @@ const team = await getTeam();
     <Pillars items={pillars} />
   </Section>
 
-  <Section id="projects" heading="Projects">
+  <Section id="projects" heading="Projects" bleed>
     <FeatureRows items={projects} />
   </Section>
 

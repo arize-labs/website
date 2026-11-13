@@ -1,0 +1,243 @@
+---
+title: From an observability platform to a context platform
+description: Where Phoenix goes next, from describing what happened to acting on it.
+pubDate: 2026-05-08
+authors: [mikyo-king]
+tags: [phoenix, evals, agents]
+art: graph
+---
+
+Observability was built for a world where humans did the reasoning. A human
+deployed code, reviewed traces, triaged alerts, diagnosed failures. The tooling
+matched: dashboards, filters, evaluation pipelines. All of it assumed a human in
+the loop.
+
+That assumption is breaking.
+
+## The evolution of software engineering
+
+Two things changed at once.
+
+Agents started writing the code. Six months ago most of us coded by hand with
+occasional AI assist. Now most of us run multiple agents in parallel, stepping
+in only when careful scrutiny is needed. The ratio inverted, but the
+infrastructure didn't follow. Agents produce code with no feedback mechanism to
+verify whether it works.
+
+At the same time, the software itself became non-deterministic. It's not just
+code anymore. It's prompts, model weights, agents making decisions at runtime.
+You can't review behavior before it runs. You can only observe it after.
+
+For agents to close the loop, they need self-verification. For humans to trust
+them, agents need mechanisms to prove their work. Both require a platform where
+agents and humans share context: where traces, evals, and feedback are
+accessible through programmatic interfaces, not just dashboards.
+
+## Why traces are the source of truth
+
+In traditional software, you can read the code. Every path is visible.
+Deterministic. You see it all before it runs. In an agent, you can't. Decisions
+happen inside the model at runtime. Different every time. You only see them
+after, in the traces.
+
+The source of truth shifted from code to traces. Traces are the record of what
+actually happened: every LLM call, every tool invocation, every routing
+decision. They're the substrate for evals, the input to experiments, the
+context that makes any downstream reasoning possible. Without programmatic
+access to them, an agent is writing code it can never verify.
+
+This is not abstract. When a coding agent produces a change to an agentic
+application, the only record of what that application _did_ (its decisions,
+its tool calls, its outputs) lives in the traces. Source code tells you what
+_could_ happen. Traces tell you what _did_. In a non-deterministic system, the
+latter matters more.
+
+Phoenix is already built on this foundation: vendor-agnostic,
+OpenTelemetry-based conventions that work across every major framework and
+provider. The traces are there. The question is what we do with them next.
+
+## Context platform
+
+Every previous platform category was defined by what it observed. ML metrics.
+LLM inputs and outputs. Agent trajectories.
+
+The next platform is defined by what it _enables_. It holds the context
+(traces, evals, annotations, feedback, experiments) and exposes it to both
+humans and agents so they can act on it.
+
+Not an ML platform. Not an LLM platform. Not an agent platform. A context
+platform.
+
+The distinction matters because it changes what we build. An observability
+platform optimizes for human consumption: dashboards, visualizations, alerting
+rules. A context platform optimizes for _both_ human and programmatic
+consumption. It exposes GraphQL APIs, CLI interfaces, MCP endpoints: surfaces
+where agents can query traces, correlate failures, and reason over eval results
+without a human intermediary.
+
+We started building toward this with the Phoenix CLI earlier this year. The
+insight was simple: AI coding assistants operate through the terminal and the
+filesystem. A browser-based UI is useful for humans, but inaccessible to an
+agent working in your IDE. Programmatic interfaces meet agents where they
+already are.
+
+## Context to action
+
+But a context platform that only serves dashboards is still waiting for a human
+to act. The next step is transforming context into action: observability that
+doesn't just describe what happened, but participates in fixing it.
+
+This is the product thesis that drives everything that follows.
+
+## Agent evals
+
+If traces are the source of truth and the platform's job is to turn context
+into action, evaluation is where it starts.
+
+### The expanding surface area
+
+The evaluation problem is expanding along two dimensions simultaneously. On one
+axis, what's under test is growing: from prompts and model outputs into tools,
+security, orchestration, context management, environment interaction,
+infrastructure, and self-reflection. On the other axis, the eval inputs
+themselves are growing richer: from simple input/output pairs to full
+trajectories, sandboxed execution, repetition analysis, ops metrics, and change
+history.
+
+At the LLM level, the question is straightforward: _is the output correct?_ At
+the agent level: _did it make the right decisions?_ At the harness level: _does
+the system work reliably?_ And for fully autonomous agents, the question we're
+ultimately building toward: _does it get better over time?_
+
+The surface area of what needs evaluation is outpacing what a single LLM call
+can assess.
+
+### From LLM-as-a-judge to agent-as-a-judge
+
+Evaluation strategies naturally evolve to match the complexity of what they
+measure. LLM-as-a-judge emerged when generative outputs broke the assumption of
+a single right answer, because LLMs are flexible enough to capture subjectivity
+and customizable along the axes of quality teams actually care about. But it is
+shaped for outputs LLMs produce in isolation: input/output pairs that fit
+cleanly into a prompt. A single pass: input, output, criteria in; label, score,
+explanation out.
+
+Agentic systems are the next step. Agents don't produce outputs in isolation;
+they interact with environments and humans, operating in a long-running loop.
+Evaluation agents fit this shape because they share it: iterative reasoning,
+tool use, context management, sub-agents, the ability to run code and verify
+outputs. The same capabilities that make agents useful in production make them
+well-suited to evaluating other agents.
+
+This is where Phoenix's role as a context platform becomes concrete. The
+evaluator agent consumes the same traces, the same experiment data, the same
+feedback that the rest of the system produces. Evaluation isn't a separate
+workflow bolted onto the platform. It's a consumer of the platform's context,
+like everything else.
+
+### Sandboxes for agents and evals
+
+Agent evaluation and agent execution both require isolated environments. You
+can't verify whether an agent's code change works without running it. You
+can't run untrusted code without containment.
+
+We're investing in sandbox integrations at both ends of the spectrum. Locally,
+WebAssembly and Deno provide lightweight, in-process isolation, fast enough for
+tight eval loops during development. For hosted execution, we're integrating
+with Modal, Vercel, and Daytona to provide full cloud-based runtimes with
+filesystem access, CLI tools, and network isolation.
+
+Sandboxes aren't just an eval feature. They're a prerequisite for the feedback
+loop we're building toward, where agents implement changes, re-run workloads,
+and verify their own output.
+
+## Closing the loop
+
+Everything we've discussed (traces as source of truth, the context platform,
+agent evals, sandboxes) converges on a single architectural goal: pulling
+verification into the agent loop itself.
+
+### Pulling verification into the agent loop
+
+Here's how it works concretely. An agentic application emits traces,
+evaluation results, and feedback into Phoenix. A coding agent (Claude Code,
+Cursor, whatever's next) queries Phoenix through the CLI or API to understand
+what went wrong. It correlates traces with eval failures, reasons over the
+context, implements a change, commits it, and re-runs the workload. The new
+traces flow back into Phoenix. The loop iterates.
+
+This is not hypothetical. The Phoenix CLI already supports `px traces` for
+fetching trace data, `px api graphql` for arbitrary queries against the Phoenix
+backend, and agent skills that teach coding agents how to interpret trace data
+and diagnose failures. The pieces exist. We're connecting them into a
+continuous loop.
+
+### Self-improving agents, self-improving systems
+
+Agents are rapidly gaining the ability to evolve themselves. But self-improving
+systems need tools and guardrails: triggers that initiate improvement cycles,
+context to reason over, and CI gates that enforce quality before changes ship.
+
+The core principle: **make coding agents prove their work.** Don't trust that
+an agent's change is correct; require it to demonstrate correctness through
+traces, evals, and experiments. Phoenix becomes the verification layer in this
+loop, the infrastructure through which agents produce evidence and humans audit
+it.
+
+## Agents debugging agents
+
+This brings us to the deeper implication. If agents can query traces, run
+evals, and reason over feedback, then agents can debug other agents. The human
+doesn't disappear; they supervise. But the diagnostic work shifts.
+
+### Active and passive modes
+
+Phoenix sits at the center of two interaction patterns. In the _active_ mode, a
+human directs an agent through Phoenix: querying traces, running evals,
+iterating on changes with the agent as a collaborator. In the _passive_ mode,
+an autonomous agent or assistant does the work proactively, surfacing issues
+and proposing changes, and the human reviews.
+
+Both modes require the same infrastructure: shared context, programmatic
+access, and mechanisms for agents to present evidence of their reasoning. The
+difference is who initiates. Over time, we expect the balance to shift toward
+passive, but the platform has to support both.
+
+## Phoenix Intelligence
+
+This is where the product work converges. Phoenix Intelligence is our agent
+layer, built directly into the platform.
+
+We envision two tiers. The _assistant_ helps you along your AI engineering
+journey: human-in-the-loop collaboration for debugging, dataset generation,
+eval design, experiment setup. It meets you where you are, whether you're a PM
+exploring production data or an ML engineer optimizing retrieval.
+
+The _experts_ are autonomous. They research your use case, alert you to
+regressions, run evaluations on your behalf, and surface insights while you
+rest. They are, in effect, autonomous AI engineers and data scientists
+operating continuously inside your observability platform.
+
+Agents building agents, improving agents, observed by agents. The platform that
+holds the context _is_ the platform that acts on it. That's the thesis. That's
+what we're building.
+
+## Final thought: the dial of delegation
+
+None of this means engineering is dead. Quite the opposite. As agents take on
+more of the verification work, what they can't take on becomes more valuable:
+the judgment about when to trust them, what to delegate, and what to keep
+close.
+
+The dial of delegation is a human decision. The teams that learn to turn it
+carefully, pulling back when the stakes are high and opening up when the
+patterns are well understood, are the ones that will move fastest. Trust isn't
+given to agents; it's earned. The engineers who calibrate it well will define
+what their organizations can do.
+
+---
+
+_Phoenix is open source. The CLI, the tracing infrastructure, the eval
+framework, the OpenInference conventions: all of it ships in the open. What
+comes next builds on that foundation. If you're building agentic systems and
+thinking about these problems, we'd love to hear from you._

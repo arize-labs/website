@@ -101,7 +101,27 @@ a { color: inherit; }
 .prose :not(pre) > code { padding: 0.1em 0.3em; background: var(--placeholder); }
 .prose pre { padding: var(--space-4); overflow-x: auto; font-size: var(--text-small); line-height: 1.5; border: 1px solid var(--rule); }
 .prose img { border: 1px solid var(--rule); }
+/* Code blocks: the Pierre theme's dark colors, with the site's dark theme
+   (an explicit choice, or the system preference when none is set). */
+:root[data-theme="dark"] .astro-code,
+:root[data-theme="dark"] .astro-code span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .astro-code,
+  :root:not([data-theme]) .astro-code span {
+    color: var(--shiki-dark) !important;
+    background-color: var(--shiki-dark-bg) !important;
+  }
+}
 .prose hr { border: 0; border-top: 1px solid var(--rule); }
+/* Tables: ruled rows, mono caps headers, figures aligned for comparison.
+   Wide tables scroll rather than push the page sideways. */
+.prose table { display: block; overflow-x: auto; border-collapse: collapse; font-size: var(--text-small); line-height: 1.45; font-variant-numeric: tabular-nums; }
+.prose th, .prose td { padding: 10px var(--space-4) 10px 0; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+.prose th { font: 500 var(--text-micro) / 1.4 var(--font-mono); letter-spacing: var(--tracking-micro); text-transform: uppercase; color: var(--dim); border-bottom-color: var(--fg); }
+.prose th[align="right"], .prose td[align="right"] { text-align: right; }
 
 @media (max-width: 720px) {
   .prose { font-size: var(--text-body); }

@@ -2,7 +2,7 @@
 name: Jason Lopatecki
 role: Advisor
 avatar: ../../assets/team/jason-lopatecki.jpg
-order: 50
+order: -2
 ---
 
 TODO: bio for Jason.

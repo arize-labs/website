@@ -1,0 +1,24 @@
+---
+/**
+ * A product's art: a hidden-line model over a dithered glow (see
+ * product-art.ts). It fills its nearest positioned ancestor, which sets the
+ * frame. Without WebGL2 or JavaScript the frame is left empty.
+ */
+import type { SceneId } from "./product-art";
+
+export interface Props {
+  scene: SceneId;
+}
+const { scene } = Astro.props;
+---
+
+<canvas class="product-art" data-scene={scene} aria-hidden="true"></canvas>
+
+<style>
+  .product-art { position: absolute; inset: 0; width: 100%; height: 100%; }
+</style>
+
+<script>
+  import { mountProductArt } from "./product-art";
+  mountProductArt();
+</script>

@@ -4,6 +4,7 @@ import type { Post } from "../lib/content";
 import { postUrl } from "../lib/content";
 import FormattedDate from "./FormattedDate.astro";
 import Byline from "./Byline.astro";
+import CoverArt from "./art/CoverArt.astro";
 
 export interface Props {
   post: Post;
@@ -12,12 +13,12 @@ export interface Props {
   headingLevel?: "h2" | "h3";
 }
 const { post, variant = "card", headingLevel: Heading = "h3" } = Astro.props;
-const { title, description, pubDate, authors, cover, tags } = post.data;
+const { title, description, pubDate, authors, cover, art, tags } = post.data;
 ---
 
 <article class:list={["post-card", variant]}>
   <a class="thumb" href={postUrl(post)} tabindex="-1" aria-hidden="true">
-    {cover ? <Image src={cover} alt="" widths={[480, 960]} sizes="(max-width: 720px) 104px, 33vw" /> : <span class="placeholder">[ cover ]</span>}
+    {cover ? <Image src={cover} alt="" widths={[480, 960]} sizes="(max-width: 720px) 104px, 33vw" /> : <CoverArt seed={post.id} kind={art} />}
   </a>
   <div class="text">
     <p class="eyebrow">
@@ -38,7 +39,8 @@ const { title, description, pubDate, authors, cover, tags } = post.data;
   .title { margin-bottom: 6px; font: 600 19px / 1.25 var(--font-sans); letter-spacing: -0.01em; }
   .title a { text-decoration: none; }
   .title a:hover { text-decoration: underline; text-underline-offset: 3px; }
-  .description { color: var(--soft); }
+  /* Two lines at most, so cards in a row stay even. */
+  .description { color: var(--soft); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
   .meta { margin-top: var(--space-2); color: var(--dim); font-size: var(--text-small); }
 
   /* Row: thumbnail beside text. Used for lists, and for cards on phones. */

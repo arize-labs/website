@@ -17,13 +17,13 @@
 
 // Mark geometry in the mark SVG's units (src/assets/brand/arize-labs-mark.svg).
 // Each rounded convex shape is its corner-arc centres plus the arc radius.
-const OUTER = [[-48.069, -444.1], [48.069, -444.1], [408.629, 180.42], [360.569, 263.68], [-360.569, 263.68], [-408.629, 180.42]];
-const OUTER_R = 25;
-const HOLE = [[155.119, 0], [77.559, 134.34], [-77.559, 134.34], [-155.119, 0], [-77.559, -134.34], [77.559, -134.34]];
-const HOLE_R = 50;
-const DOT_R = 80;
-const VIEW = { x: -433.63, y: -469.1, w: 867.26, h: 757.77 };
-const CENTER = [VIEW.x + VIEW.w / 2, VIEW.y + VIEW.h / 2];
+export const OUTER = [[-48.069, -444.1], [48.069, -444.1], [408.629, 180.42], [360.569, 263.68], [-360.569, 263.68], [-408.629, 180.42]];
+export const OUTER_R = 25;
+export const HOLE = [[155.119, 0], [77.559, 134.34], [-77.559, 134.34], [-155.119, 0], [-77.559, -134.34], [77.559, -134.34]];
+export const HOLE_R = 50;
+export const DOT_R = 80;
+export const VIEW = { x: -433.63, y: -469.1, w: 867.26, h: 757.77 };
+export const CENTER = [VIEW.x + VIEW.w / 2, VIEW.y + VIEW.h / 2];
 
 // Layout within the band, as in the prototype: the band fades out from 55%
 // down, so the mark sits above its centre.

@@ -1,0 +1,25 @@
+---
+/**
+ * An interactive figure hosted elsewhere (an HTML page), framed in the post.
+ * Import it in a .mdx post:
+ *
+ *   <Embed src="https://.../figure.html" title="Tool calling loop" height={560} />
+ */
+export interface Props {
+  src: string;
+  /** Read by screen readers; also the frame's accessible name. */
+  title: string;
+  /** Frame height in CSS pixels; the figure scrolls inside it if taller. */
+  height?: number;
+}
+const { src, title, height = 560 } = Astro.props;
+---
+
+<figure class="embed">
+  <iframe src={src} title={title} loading="lazy" style={`height: ${height}px`} referrerpolicy="no-referrer"></iframe>
+</figure>
+
+<style>
+  .embed { margin-inline: 0; border: 1px solid var(--rule); background: var(--surface); }
+  iframe { display: block; width: 100%; border: 0; }
+</style>

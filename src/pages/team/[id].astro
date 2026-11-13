@@ -4,6 +4,7 @@ import { Image } from "astro:assets";
 import { render } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import PostCard from "../../components/PostCard.astro";
+import SocialLinks, { type Network } from "../../components/SocialLinks.astro";
 import { getPostsByAuthor, getTeam, type Member } from "../../lib/content";
 
 export const getStaticPaths = (async () => {
@@ -18,7 +19,10 @@ const { member } = Astro.props;
 const { name, role, avatar, links } = member.data;
 const { Content } = await render(member);
 const posts = await getPostsByAuthor(member.id);
-const linkList = Object.entries(links).filter(([, href]) => href);
+const NETWORK_NAMES: Record<Network, string> = { github: "GitHub", x: "X", linkedin: "LinkedIn", website: "website" };
+const linkList = (Object.entries(links) as [Network, string | undefined][])
+  .filter((entry): entry is [Network, string] => !!entry[1])
+  .map(([network, href]) => ({ network, href, name: network === "website" ? `${name}'s website` : `${name} on ${NETWORK_NAMES[network]}` }));
 ---
 
 <BaseLayout title={name} description={`${name}, ${role} at Arize Labs.`} type="profile">
@@ -32,9 +36,7 @@ const linkList = Object.entries(links).filter(([, href]) => href);
       <p class="role">{role}</p>
       <div class="prose bio"><Content /></div>
       {linkList.length > 0 && (
-        <ul class="links">
-          {linkList.map(([label, href]) => <li><a class="button" href={href} rel="me noopener">{label}</a></li>)}
-        </ul>
+        <div class="links"><SocialLinks label="Follow" links={linkList} rel="me" /></div>
       )}
     </div>
   </article>
@@ -65,7 +67,7 @@ const linkList = Object.entries(links).filter(([, href]) => href);
   h1 { margin-top: var(--space-4); font: 600 var(--text-h2) / 1.05 var(--font-sans); letter-spacing: var(--tracking-tight); }
   .role { margin-top: var(--space-2); color: var(--soft); font-size: var(--text-intro); }
   .bio { margin-top: var(--space-6); }
-  .links { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-6); padding: 0; list-style: none; }
+  .links { margin-top: var(--space-6); }
 
   .posts { padding-top: var(--space-section); }
   .posts h2 { margin-bottom: var(--space-6); font: 600 28px / 1.2 var(--font-sans); letter-spacing: -0.015em; }

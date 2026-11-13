@@ -1,6 +1,7 @@
 import { defineCollection, reference } from "astro:content";
 import { glob } from "astro/loaders";
 import { z } from "astro/zod";
+import { ART_KINDS } from "./components/art/cover-art";
 
 const team = defineCollection({
   loader: glob({ pattern: "**/*.{md,yaml}", base: "./src/content/team" }),
@@ -33,6 +34,8 @@ const posts = defineCollection({
       authors: z.array(reference("team")).min(1),
       tags: z.array(z.string()).default([]),
       cover: image().optional(),
+      /** Style of the generated cover art when there's no `cover` image; picked from the post id if omitted. */
+      art: z.enum(ART_KINDS).optional(),
       draft: z.boolean().default(false),
     }),
 });

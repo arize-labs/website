@@ -4,6 +4,7 @@ description: Why Arize Labs exists, and what we mean by building in the open.
 pubDate: 2026-11-10
 authors: [mikyo-king]
 tags: [lab, open-source]
+art: mark
 ---
 
 Arize Labs is where we chase early ideas and build in the open, on a mission to

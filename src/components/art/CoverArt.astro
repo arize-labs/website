@@ -1,0 +1,21 @@
+---
+/**
+ * Generated cover art (see cover-art.ts) for a post without a `cover` image.
+ * It fills its container and crops like `object-fit: cover`.
+ */
+import { coverArt, type ArtKind } from "./cover-art";
+
+export interface Props {
+  /** Usually the post id, so each post keeps its own drawing. */
+  seed: string;
+  kind?: ArtKind;
+}
+const { seed, kind } = Astro.props;
+---
+
+<span class="cover-art-frame" set:html={coverArt(seed, kind)} />
+
+<style>
+  .cover-art-frame { display: block; width: 100%; height: 100%; background: var(--bg); }
+  .cover-art-frame :global(svg) { display: block; width: 100%; height: 100%; }
+</style>

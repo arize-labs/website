@@ -1,18 +1,27 @@
 ---
 /**
- * Alternating art-and-text rows (art left, then right, ...). Each row's art
- * is a placeholder frame until real art is supplied.
+ * Alternating art-and-text rows (art left, then right, ...), laid out as in
+ * the prototype's products section. Place it in a `bleed` Section: the rows
+ * span the page, the text keeps to the content column, and the art reaches
+ * from the page edge to where the text starts, fading out at its outer end.
+ * A row with a `scene` draws that product art; otherwise the frame is a
+ * placeholder until real art is supplied.
  */
+import ProductArt from "../art/ProductArt.astro";
+import type { SceneId } from "../art/product-art";
+
 export interface Props {
-  items: { name: string; body: string; href?: string; cta?: string }[];
+  items: { name: string; body: string; href?: string; cta?: string; scene?: SceneId }[];
 }
 const { items } = Astro.props;
 ---
 
-<div class="features">
+<div class="features bleed">
   {items.map((item, i) => (
     <article class:list={["feature", i % 2 ? "art-right" : "art-left"]}>
-      <figure class="art placeholder" aria-hidden="true">[ art ]</figure>
+      <figure class:list={["art", !item.scene && "placeholder"]} aria-hidden="true">
+        {item.scene ? <ProductArt scene={item.scene} /> : "[ art ]"}
+      </figure>
       <div class="text tick-card">
         <h3>{item.name}</h3>
         <p>{item.body}</p>
@@ -23,34 +32,53 @@ const { items } = Astro.props;
 </div>
 
 <style>
-  .features { display: grid; gap: var(--space-9); }
+  .features { display: grid; grid-template-columns: subgrid; }
+  /* Row height, and with it the model's size, tracks page width: about 655px
+     at a 1400px page, growing toward 1000px by 2400. */
   .feature {
+    --col: min(100% - 2 * var(--gutter), var(--content-max));
+    --edge: max(var(--gutter), (100% - var(--content-max)) / 2);
+    /* On very wide pages the art stops reaching the page edge, so the model
+       stays near its text instead of drifting into the margin. */
+    --reach: min(var(--edge), 620px);
+    grid-column: full;
     display: grid;
-    grid-template-columns: minmax(0, 56fr) minmax(0, 44fr);
-    gap: var(--space-7);
+    grid-template-columns: subgrid;
+    position: relative;
+    height: clamp(420px, 150px + 36vw, 1040px);
     align-items: center;
   }
-  .art-right { grid-template-columns: minmax(0, 44fr) minmax(0, 56fr); }
-  .art-right .art { order: 2; }
-  .art { aspect-ratio: 1; max-height: 620px; }
+  /* The art spans from the page edge to where the text column starts, so the
+     model sits centred in that space and only the fade reaches the text. */
+  .art { position: absolute; top: 0; bottom: 0; width: calc(var(--reach) + var(--col) * 0.56); }
+  .art-left .art { left: calc(var(--edge) - var(--reach)); mask-image: linear-gradient(to right, #000 78%, transparent); }
+  .art-right .art { right: calc(var(--edge) - var(--reach)); mask-image: linear-gradient(to left, #000 78%, transparent); }
+
   /* Wide: the text sits bare beside the art. */
+  .text { position: relative; grid-column: content; width: 44%; padding: var(--space-7) 0; }
+  .art-left .text { justify-self: end; }
+  .art-right .text { justify-self: start; }
   .text.tick-card { --card: transparent; --tick-len: 0px; }
   h3 { margin-bottom: var(--space-4); font: 600 var(--text-feature) / 1.05 var(--font-sans); letter-spacing: var(--tracking-tight); }
   p { color: var(--soft); font-size: var(--text-body-lg); line-height: 1.5; }
   .button { margin-top: 28px; }
 
   @media (max-width: 840px) {
-    .features { gap: var(--space-8); }
-    .feature, .art-right { grid-template-columns: minmax(0, 1fr); gap: 0; }
-    .art-right .art { order: 0; }
-    .art { aspect-ratio: 4 / 3; mask-image: linear-gradient(to bottom, #000 70%, transparent); }
+    .feature { display: flex; flex-direction: column; height: auto; align-items: stretch; }
+    .art, .art-left .art, .art-right .art {
+      position: relative;
+      inset: auto;
+      width: 100%;
+      aspect-ratio: 1;
+      max-height: 620px;
+      mask-image: linear-gradient(to bottom, #000 70%, transparent);
+    }
     /* Narrow: the text becomes a card laid over the foot of the art. */
     .feature .text.tick-card {
       --card: var(--card-solid);
       --tick-len: 10px;
-      position: relative;
-      width: min(560px, 100% - 2 * var(--space-5));
-      margin: -72px auto 0;
+      width: min(560px, 100% - 2 * var(--gutter));
+      margin: -72px auto var(--space-8);
       padding: var(--space-5) 22px 26px;
     }
   }
