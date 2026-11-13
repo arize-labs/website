@@ -13,15 +13,22 @@ import pierreDark from "@pierre/theme/pierre-dark";
  */
 const shikiTheme = (theme) => /** @type {NonNullable<import("astro").ShikiConfig["theme"]>} */ (theme);
 
+/** The deployment's public origin. Local builds default to the intended production domain. */
+function siteUrl() {
+  const { VERCEL_ENV, VERCEL_BRANCH_URL, VERCEL_PROJECT_PRODUCTION_URL } = process.env;
+  if (VERCEL_ENV === "preview" && VERCEL_BRANCH_URL) return `https://${VERCEL_BRANCH_URL}`;
+  if (VERCEL_ENV === "production" && VERCEL_PROJECT_PRODUCTION_URL) return `https://${VERCEL_PROJECT_PRODUCTION_URL}`;
+  // TODO: replace with the production domain once it is decided.
+  return "https://labs.arize.com";
+}
+
 // https://astro.build/config
 export default defineConfig({
-  // TODO: replace with the production domain once it is decided.
-  // Vercel preview builds use their own branch URL, so canonical links and
-  // social card images (og:image) resolve on the preview being tested.
-  site:
-    process.env.VERCEL_ENV === "preview" && process.env.VERCEL_BRANCH_URL
-      ? `https://${process.env.VERCEL_BRANCH_URL}`
-      : "https://labs.arize.com",
+  // Canonical links and social card URLs (og:image) are absolute, so they
+  // must point at a host that serves this site. On Vercel: previews use their
+  // branch URL, and production uses the project's production domain (its
+  // custom domain once one is added, *.vercel.app until then).
+  site: siteUrl(),
   // Static by default. Individual routes can opt into on-demand rendering
   // with `export const prerender = false`.
   adapter: vercel(),
