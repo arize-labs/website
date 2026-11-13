@@ -275,12 +275,46 @@
 .d-fill-dots { fill: var(--d-dots); }
 .d-fill-hatch { fill: var(--d-hatch); }
 .d-pat-dot { fill: var(--fig-texture); }
+.d-pat-fine-ground { fill: var(--fig-zone-solid); }
+.d-pat-fine { fill: color-mix(in srgb, var(--fg) 42%, transparent); }
 .d-pat-hatch { stroke: var(--fig-line-strong); stroke-width: 1; }
 .d-codebox { fill: var(--fig-code); }
 .d-rule { stroke: var(--fig-line); stroke-width: 1; }
 .d-rule-accent { stroke: var(--accent); stroke-width: 1.5; }
 .d-outline { fill: none; stroke: var(--fig-line); }
 .d-outline[data-tone="accent"] { stroke: var(--accent); }
+
+/* Strips: a prompt as a row of segments (Strip.astro). Cached segments take
+   the dot texture; segments billed at the full input price take the accent
+   tint with an accent edge. Labels carry a ground-coloured halo so they stay
+   readable over the texture. */
+.d-seg rect { fill: var(--fig-ground); stroke: var(--fig-line-strong); stroke-width: 1; transition: fill 220ms, stroke 220ms, stroke-width 220ms; }
+.d-seg text {
+  font: 400 11px var(--font-mono);
+  paint-order: stroke;
+  stroke: var(--fig-ground);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  transition: fill 220ms, stroke 220ms;
+}
+.d-seg[data-state="cached"] rect { fill: var(--d-fine); }
+.d-seg[data-state="cached"] text { stroke: var(--fig-zone-solid); }
+.d-seg[data-state="full"] rect { fill: var(--fig-accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+.d-seg[data-state="full"] text { stroke: var(--fig-accent-soft); }
+.d-seg[data-state="ghost"] rect { fill: var(--fig-zone-solid); stroke: var(--fig-line); stroke-dasharray: 3 3; }
+.d-svg .d-seg[data-state="ghost"] text { fill: var(--dim); stroke: var(--fig-zone-solid); }
+/* The fine dot texture for cached tokens and KV blocks, and a halo for text set over it. */
+.d-fill-fine { fill: var(--d-fine); stroke: var(--fig-line-strong); stroke-width: 0.75; }
+.d-svg .d-halo { paint-order: stroke; stroke: var(--fig-zone-solid); stroke-width: 3px; stroke-linejoin: round; }
+/* A bracket under (or over) a run of segments, with a mono caps label. */
+.d-bracket { fill: none; stroke: var(--fig-line-strong); stroke-width: 1; }
+.d-bracket[data-tone="accent"] { stroke: var(--accent); }
+/* A position in a strip: the first mismatch, a scan head, a cut. */
+.d-mark { stroke: var(--fg); stroke-width: 1.5; }
+.d-mark[data-tone="accent"] { stroke: var(--accent); }
+.sw-full { background: var(--fig-accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent); height: 12px; }
+.sw-cached { background: radial-gradient(circle, color-mix(in srgb, var(--fg) 42%, transparent) 0.8px, transparent 1.1px) 0 0 / 4px 4px, var(--fig-zone-solid); box-shadow: inset 0 0 0 1px var(--fig-line-strong); height: 12px; }
+.sw-ghost { background: var(--fig-zone-solid); border: 1px dashed var(--fig-line); height: 12px; }
 
 /* Tokens: blocks moving along wires (Scene.stream). Payload blocks keep a
    fixed shade each, so a train reads as a run of data, not a spray. */

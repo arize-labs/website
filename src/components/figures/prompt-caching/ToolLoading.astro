@@ -1,0 +1,78 @@
+---
+import Figure from "../../figure/Figure.astro";
+import Diagram from "../../figure/diagram/Diagram.astro";
+import Strip from "../../figure/diagram/Strip.astro";
+import Legend from "../../figure/diagram/Legend.astro";
+import { layoutStrip, type Seg } from "../../figure/diagram/strip";
+import { num } from "./data";
+
+type Part = { id: string; label: string; w: number; tokens: number };
+const P: Record<string, Part> = {
+  search: { id: "search", label: "search", w: 70, tokens: 400 },
+  read: { id: "read", label: "read", w: 60, tokens: 400 },
+  edit: { id: "edit", label: "edit", w: 60, tokens: 400 },
+  deploy: { id: "deploy", label: "deploy", w: 76, tokens: 400 },
+  system: { id: "system", label: "system", w: 90, tokens: 3_000 },
+  conv: { id: "conv", label: "conversation: 60,000 tokens", w: 496, tokens: 60_000 },
+  found: { id: "found", label: "result: deploy", w: 150, tokens: 600 },
+  next: { id: "next", label: "next", w: 70, tokens: 400 },
+};
+const ROWS = [
+  { title: "Turn 8", parts: ["search", "read", "edit", "system", "conv"], at: 99, note: "everything cached" },
+  { title: "Turn 9, lazy loading: deploy added to the tool list", parts: ["search", "read", "edit", "deploy", "system", "conv"], at: 3 },
+  { title: "Turn 9, tool search: deploy returned in a tool result", parts: ["search", "read", "edit", "system", "conv", "found", "next"], at: 5 },
+];
+const PITCH = 100;
+const rows = ROWS.map((r, i) => {
+  const parts = r.parts.map((id) => P[id]);
+  const segs: Seg[] = parts.map((p, j) => ({ k: `r${i}-${p.id}`, label: p.label, w: p.w, state: j < r.at ? "cached" : "full" }));
+  const reused = parts.slice(0, r.at).reduce((a, p) => a + p.tokens, 0);
+  const redone = parts.slice(r.at).reduce((a, p) => a + p.tokens, 0);
+  const placed = layoutStrip(segs, 0);
+  const y = 22 + i * PITCH;
+  return { ...r, i, y, segs, reused, redone, markX: r.at < parts.length ? placed[r.at].x - 3 : 0 };
+});
+const H = rows[2].y + 14 + 30 + 40;
+---
+
+<Figure
+  title="Lazy tool loading vs. tool search"
+  width="wide"
+  ground="dots"
+>
+  <Diagram
+    id="tool-loading"
+    height={H}
+    label={`Turn 8 of a session: three tool definitions, a system prompt and 60,000 tokens of conversation, all cached. On turn 9 the agent needs a deploy tool. Loading it lazily inserts its definition into the tool list, before the system prompt, so ${num(rows[1].redone)} tokens are processed again at full price. With tool search, the definition arrives in a tool result at the end of the conversation: the ${num(rows[2].reused)}-token prefix is read from the cache and only ${num(rows[2].redone)} new tokens are processed.`}
+  >
+    {rows.map((r) => (
+      <g>
+        <text class="d-title" x={0} y={r.y}>{r.title}</text>
+        <text class="d-mono" x={1032} y={r.y} text-anchor="end" data-key={`r${r.i}-read`}>
+          {r.redone === 0 ? <tspan class="d-dim">{num(r.reused)} tokens from cache</tspan> : (
+            <>
+              <tspan class="d-dim">{num(r.reused)} from cache · </tspan><tspan class="d-accent">{num(r.redone)} at full price</tspan>
+            </>
+          )}
+        </text>
+        <Strip x={0} y={r.y + 14} segs={r.segs} k={`r${r.i}-strip`} />
+        {r.i === 1 && (
+          <g data-key="r1-mark">
+            <line class="d-mark" x1={r.markX} x2={r.markX} y1={r.y + 8} y2={r.y + 52} />
+            <text class="d-tag" x={r.markX} y={r.y + 68} text-anchor="middle">First mismatch</text>
+          </g>
+        )}
+      </g>
+    ))}
+  </Diagram>
+  <Legend
+    items={[
+      { swatch: "cached", label: "read from the cache" },
+      { swatch: "full", label: "processed at full price" },
+    ]}
+  />
+  <Fragment slot="caption">
+    Lazy loading saves a few hundred tokens of schema and pays for the whole conversation again. Tool search adds the
+    definition at the end, so the prefix stays put. Each tool definition is about 400 tokens here.
+  </Fragment>
+</Figure>

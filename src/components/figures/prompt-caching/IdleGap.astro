@@ -1,0 +1,141 @@
+---
+import Figure from "../../figure/Figure.astro";
+import Diagram from "../../figure/diagram/Diagram.astro";
+import Node from "../../figure/diagram/Node.astro";
+import Strip from "../../figure/diagram/Strip.astro";
+import Legend from "../../figure/diagram/Legend.astro";
+import { IDLE, IDLE_COST, PRICE, num, usd } from "./data";
+
+const X0 = 170;
+const X1 = 990;
+const x = (min: number) => X0 + (min / IDLE.gapMin) * (X1 - X0);
+const Y = { you: 30, provider: 92, kv: 160, axis: 214, req: 280 };
+const ticks = Array.from({ length: IDLE.gapMin + 1 }, (_, m) => m);
+const reqW = 72;
+---
+
+<Figure
+  title="Cache expiry during an idle gap"
+  width="wide"
+  ground="dots"
+  scene="idle-gap"
+  status={`A pause longer than the TTL turns the next request into a cold start: the same ${num(IDLE.history)} tokens, all processed again.`}
+>
+  <Diagram
+    id="idle-gap"
+    height={Y.req + 58}
+    label={`A seven-minute timeline. You see one continuous session. The provider sees a request at 0:00, then nothing while tests run, then a request at 7:00. The cached prefix of ${num(IDLE.history)} tokens expires at 5:00, the end of its five-minute TTL. The request at 7:00 adds a three-token message, so its whole ${num(IDLE.history)}-token history is processed again: ${usd(IDLE_COST.miss)} rewritten into the cache instead of ${usd(IDLE_COST.hit)} read from it.`}
+  >
+    <!-- Rows -->
+    <text class="d-tag" x={0} y={Y.you + 16}>User</text>
+    <rect class="d-fill-zone" x={X0} y={Y.you} width={X1 - X0} height={24} rx="3" data-key="you-bar" />
+    <text class="d-sub" x={X0 + 14} y={Y.you + 16} data-key="you-say">Continuous session: test run, review</text>
+
+    <text class="d-tag" x={0} y={Y.provider + 18}>Provider</text>
+    <Node x={x(0) - reqW / 2} y={Y.provider} w={reqW} h={28} title="request" center titleY={Y.provider + 19} k="req-1" />
+    <line class="d-rule" x1={x(0) + reqW / 2 + 8} x2={x(IDLE.gapMin) - reqW / 2 - 8} y1={Y.provider + 14} y2={Y.provider + 14} stroke-dasharray="3 4" />
+    <text class="d-tag" x={(x(0) + x(IDLE.gapMin)) / 2} y={Y.provider + 10} text-anchor="middle">No traffic</text>
+    <Node x={x(IDLE.gapMin) - reqW / 2} y={Y.provider} w={reqW} h={28} title="request" center titleY={Y.provider + 19} k="req-2" state="active" />
+
+    <text class="d-tag" x={0} y={Y.kv + 16}>Cache entry</text>
+    <g data-key="kv-live">
+      <rect class="d-fill-fine" x={x(0)} y={Y.kv} width={x(IDLE.ttlMin) - x(0)} height={24} rx="3" />
+      <text class="d-mono d-halo" x={x(0) + 12} y={Y.kv + 16}>{num(IDLE.history)}-token prefix</text>
+    </g>
+    <rect class="d-fill-ground" x={x(IDLE.ttlMin)} y={Y.kv} width={x(IDLE.gapMin) - x(IDLE.ttlMin)} height={24} rx="3" stroke-dasharray="3 3" data-key="kv-gone" />
+    <text class="d-mono d-dim" x={(x(IDLE.ttlMin) + x(IDLE.gapMin)) / 2} y={Y.kv + 16} text-anchor="middle" data-key="kv-gone-label">evicted</text>
+    <g data-key="ttl">
+      <line class="d-mark" data-tone="accent" x1={x(IDLE.ttlMin)} x2={x(IDLE.ttlMin)} y1={Y.kv - 10} y2={Y.axis - 6} />
+      <text class="d-tag d-accent" x={x(IDLE.ttlMin) + 8} y={Y.kv - 4}>TTL expires</text>
+    </g>
+
+    <!-- Axis -->
+    <line class="d-rule" x1={X0} x2={X1} y1={Y.axis} y2={Y.axis} />
+    {ticks.map((m) => (
+      <g>
+        <line class="d-rule" x1={x(m)} x2={x(m)} y1={Y.axis} y2={Y.axis + 5} />
+        <text class="d-mono d-dim" x={x(m)} y={Y.axis + 19} text-anchor="middle">{m}:00</text>
+      </g>
+    ))}
+    <g data-key="head" transform={`translate(${x(IDLE.gapMin) - X0} 0)`} data-off>
+      <line class="d-mark" x1={X0} x2={X0} y1={Y.you - 8} y2={Y.axis} />
+    </g>
+    <text class="d-mono" x={0} y={Y.axis + 19} data-key="clock" data-off>t = {IDLE.gapMin}:00</text>
+
+    <!-- The request at 7:00 -->
+    <g data-key="req">
+      <text class="d-title" x={0} y={Y.req}>Request at {IDLE.gapMin}:00, 3-token message</text>
+      <text class="d-mono" x={1032} y={Y.req} text-anchor="end">
+        <tspan class="d-accent">history {usd(IDLE_COST.miss)}</tspan><tspan class="d-dim"> instead of {usd(IDLE_COST.hit)} · reply {usd(IDLE_COST.response)}</tspan>
+      </text>
+      <Strip
+        x={0}
+        y={Y.req + 14}
+        segs={[
+          { k: "req-history", label: `history: ${num(IDLE.history)} tokens, written to the cache again at ${PRICE.write5m}×`, w: 980, state: "full" },
+          { k: "req-new", label: "+3", w: 46, state: "full" },
+        ]}
+      />
+    </g>
+  </Diagram>
+  <Legend
+    items={[
+      { swatch: "cached", label: "held in the provider's cache" },
+      { swatch: "full", label: "processed at full price (plus the write premium)" },
+    ]}
+  />
+  <Fragment slot="caption">
+    At ${PRICE.base} per million input tokens and ${PRICE.output} per million output tokens, with Anthropic's cache
+    multipliers. The three-token message is the most expensive part of the turn.
+  </Fragment>
+</Figure>
+
+<script>
+  import { defineScene } from "../../figure/motion";
+
+  const mmss = (min: number) => `t = ${Math.floor(min)}:${String(Math.floor((min % 1) * 60)).padStart(2, "0")}`;
+
+  defineScene("idle-gap", {
+    setup(s) {
+      s.attr("head", "transform", "translate(0 0)");
+      s.show("head");
+      s.attr("you-bar", "width", 0);
+      s.hide(["req-1", "req-2", "kv-live", "kv-gone", "kv-gone-label", "ttl", "req", "you-say"]);
+      s.text("clock", "t = 0:00");
+      s.show("clock");
+      s.caption("");
+    },
+    async play(s) {
+      const W = s.final("you-bar", "width");
+      const run = async (from: number, to: number, ms: number) => {
+        const el = s.$("head");
+        await Promise.all([
+          s.tween(ms, (p) => {
+            const m = from + (to - from) * p;
+            el.setAttribute("transform", `translate(${(m / 7) * W} 0)`);
+            s.$("you-bar").setAttribute("width", String((m / 7) * W));
+            s.$("clock").textContent = mmss(m);
+          }, (p) => p),
+        ]);
+      };
+      await s.wait(500);
+      s.caption("0:00. The agent sends a request. The provider caches its 100,000-token prefix for five minutes.", 1, 4);
+      await s.reveal(["req-1", "kv-live"], 250);
+      s.show("you-say");
+      await s.wait(1600);
+      s.caption("The agent starts the test suite and you step away. From the provider's side there is no traffic at all.", 2, 4);
+      await run(0, 5, 4200);
+      s.caption("5:00. Nothing has read the entry for five minutes, so it expires and its memory goes to someone else.", 3, 4);
+      s.show("ttl");
+      s.state("kv-live", "dim");
+      await s.wait(500);
+      await s.reveal(["kv-gone", "kv-gone-label"], 200);
+      await s.wait(1400);
+      await run(5, 7, 1700);
+      s.caption("7:00. You type “great, continue”. The request carries the same 100,000 tokens, and every one is processed and written again.", 4, 4);
+      s.show("req-2");
+      await s.wait(400);
+      s.show("req");
+    },
+  });
+</script>

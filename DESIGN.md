@@ -136,14 +136,17 @@ table, rather than shrinking its text below about 10px.
 | Tinted zone with corner ticks | A part of the system (the user, the agent loop, a server) |
 | Dashed edge | A sandbox or container boundary |
 | Solid wire, chevron head | Flow; a dashed wire hasn't happened yet |
+| Fine dot texture on a segment | Tokens read from the prompt cache (strips, KV blocks) |
+| Accent tint with an accent edge on a segment | Tokens processed at the full input price |
 | Blocks moving along a wire | Something being sent: a hollow block is a call, an accent block the result, and a train of small shaded blocks a payload (a wider, longer train is a bigger payload) |
 
 Still one accent at a time: don't add colours per series or per tool. If a
 figure needs to tell more things apart, use texture, position and labels.
 
 **Diagram primitives** (SVG, in `figure/diagram/`): `Diagram` (the canvas
-and texture patterns), `Zone`, `Node`, `Wire`, `Chip`, `Code`, `Meter`, and
-`Legend` (HTML, under the diagram). Text inside diagrams uses the `d-*`
+and texture patterns), `Zone`, `Node`, `Wire`, `Chip`, `Code`, `Meter`,
+`Strip` (a prompt or context window as a row of segments, laid out by
+`strip.ts`), and `Legend` (HTML, under the diagram). Text inside diagrams uses the `d-*`
 classes: `d-tag` (mono caps label), `d-title`, `d-sub`, `d-mono`, `d-code`.
 Give anything a scene will change a `k` (it becomes `data-key`).
 
@@ -157,8 +160,10 @@ readers see without JavaScript, with reduced motion, and when the animation
 ends. A `<script>` in the figure registers a scene with
 [`defineScene`](./src/components/figure/motion.ts): `setup` puts it in its
 first frame and `play` is the timeline, written with the scene's helpers
-(`state`, `show`, `caption`, `wait`, `grow`, `draw`, `type`, `stream`,
-`fly`). `stream` sends blocks along a wire: they turn with it, grow out of
+(`state`, `show`, `reveal`, `sweep`, `caption`, `wait`, `grow`, `draw`,
+`type`, `stream`, `fly`). Build a diagram up with `reveal`: pieces appear
+whole, one after another in reading order, about a tenth of a second apart,
+rather than sliding or fading in. `stream` sends blocks along a wire: they turn with it, grow out of
 the box they leave, shrink into the box they reach and pass under the wire's
 label. Keep motion deterministic, with no random jitter, so a replay looks the
 same every time. Scenes play once, when the figure is half in view; time stops while

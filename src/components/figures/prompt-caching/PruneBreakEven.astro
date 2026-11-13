@@ -1,0 +1,70 @@
+---
+import Figure from "../../figure/Figure.astro";
+import Diagram from "../../figure/diagram/Diagram.astro";
+import Wire from "../../figure/diagram/Wire.astro";
+import Legend from "../../figure/diagram/Legend.astro";
+import { BREAK_EVEN, PRUNE, PRUNE_COST, num } from "./data";
+
+const W = 656, H = 318;
+const L = 56, R = 636, T = 12, B = 270;
+const NMAX = 100, VMAX = 84_000;
+const x = (n: number) => L + (n / NMAX) * (R - L);
+const y = (v: number) => B - (v / VMAX) * (B - T);
+const keepEnd = PRUNE_COST.savedPerTurn * NMAX;
+const xt = [0, 20, 40, 60, 80, 100];
+const yt = [0, 20_000, 40_000, 60_000, 80_000];
+const be = BREAK_EVEN.turns;
+const beW = BREAK_EVEN.turnsWithWrite;
+---
+
+<Figure
+  title="Break-even point for context pruning"
+>
+  <Diagram
+    id="prune-break-even"
+    width={W}
+    height={H}
+    minWidth={520}
+    label={`Cumulative cost, in base-price input tokens, over the turns after a prune. Keeping the ${num(PRUNE.pruned)} tokens costs ${num(PRUNE_COST.savedPerTurn)} a turn at the cache-read price, a line rising to ${num(keepEnd)} after 100 turns. Pruning them costs ${num(PRUNE_COST.rewrite)} once, because the ${num(PRUNE.after)} tokens after the cut are processed again, and nothing after that. The lines cross after about ${Math.round(be)} turns, or about ${Math.round(beW)} if the rewrite also pays the 1.25× cache-write premium.`}
+  >
+    {yt.map((v) => (
+      <g>
+        <line class="d-rule" x1={L} x2={R} y1={y(v)} y2={y(v)} />
+        <text class="d-mono d-dim" x={L - 8} y={y(v) + 4} text-anchor="end">{v ? `${v / 1000}k` : 0}</text>
+      </g>
+    ))}
+    {xt.map((n) => <text class="d-mono d-dim" x={x(n)} y={B + 20} text-anchor="middle">{n}</text>)}
+    <text class="d-sub" x={(L + R) / 2} y={B + 42} text-anchor="middle">turns after the prune</text>
+
+    <Wire k="keep" points={[[x(0), y(0)], [x(NMAX), y(keepEnd)]]} arrow="none" radius={0} />
+    <text class="d-sub" x={x(NMAX) - 4} y={y(keepEnd) - 10} text-anchor="end" data-key="keep-l">no prune: {num(PRUNE_COST.savedPerTurn)} per turn</text>
+
+    <Wire k="prune-w" points={[[x(0), y(0)], [x(0), y(PRUNE_COST.rewriteWithWrite)], [x(NMAX), y(PRUNE_COST.rewriteWithWrite)]]} arrow="none" radius={0} state="idle" />
+    <text class="d-sub" x={x(0) + 10} y={y(PRUNE_COST.rewriteWithWrite) - 8} data-key="prune-w-l">prune with write premium: {num(PRUNE_COST.rewriteWithWrite)} once</text>
+
+    <Wire k="prune" points={[[x(0), y(0)], [x(0), y(PRUNE_COST.rewrite)], [x(NMAX), y(PRUNE_COST.rewrite)]]} arrow="none" radius={0} tone="accent" />
+    <text class="d-sub" x={x(0) + 10} y={y(PRUNE_COST.rewrite) - 8} data-key="prune-l">prune: {num(PRUNE_COST.rewrite)} once</text>
+
+    <g data-key="be">
+      <line class="d-rule" x1={x(be)} x2={x(be)} y1={y(PRUNE_COST.rewrite)} y2={B} stroke-dasharray="3 3" />
+      <circle cx={x(be)} cy={y(PRUNE_COST.rewrite)} r="4.5" class="d-fill-accent" />
+      <text class="d-tag d-accent" x={x(be) + 10} y={y(PRUNE_COST.rewrite) + 20}>Break-even: {Math.round(be)} turns</text>
+    </g>
+    <g data-key="be-w">
+      <circle cx={x(beW)} cy={y(PRUNE_COST.rewriteWithWrite)} r="3.5" class="d-fill-ground" stroke-width="1.5" style="stroke: var(--fg)" />
+      <text class="d-tag" x={x(beW) + 10} y={y(PRUNE_COST.rewriteWithWrite) + 18}>{Math.round(beW)} turns</text>
+    </g>
+  </Diagram>
+  <Legend
+    items={[
+      { swatch: "line", label: "no prune" },
+      { swatch: "line-accent", label: "prune" },
+      { swatch: "dashed", label: "prune with 1.25× write premium" },
+    ]}
+  />
+  <Fragment slot="caption">
+    Pruning {num(PRUNE.pruned)} tokens costs {num(PRUNE_COST.rewrite)} tokens' worth once and saves
+    {num(PRUNE_COST.savedPerTurn)} a turn, so it pays off after about {Math.round(be)} more turns, or {Math.round(beW)}
+    with the write premium. In base-price input tokens, with reads at 0.1× and no other misses.
+  </Fragment>
+</Figure>

@@ -1,0 +1,260 @@
+---
+title: "Prompt caching with AI agents: how to reduce cost and latency"
+description: How prompt caching works for AI agents, why tool changes, idle gaps and context pruning cause cache misses, and how to measure what each miss costs.
+pubDate: 2026-11-13
+authors: [mikyo-king]
+tags: [agents, prompt-caching, cost, latency]
+art: signal
+---
+
+import PrefixReuse from "../../components/figures/prompt-caching/PrefixReuse.astro";
+import FirstMismatch from "../../components/figures/prompt-caching/FirstMismatch.astro";
+import CachePrices from "../../components/figures/prompt-caching/CachePrices.astro";
+import IdleGap from "../../components/figures/prompt-caching/IdleGap.astro";
+import KvRouting from "../../components/figures/prompt-caching/KvRouting.astro";
+import SessionTree from "../../components/figures/prompt-caching/SessionTree.astro";
+import ToolLoading from "../../components/figures/prompt-caching/ToolLoading.astro";
+import PruneBreakEven from "../../components/figures/prompt-caching/PruneBreakEven.astro";
+import StableVsUnstable from "../../components/figures/prompt-caching/StableVsUnstable.astro";
+import SessionTrace from "../../components/figures/prompt-caching/SessionTrace.astro";
+import { BREAK_EVEN, IDLE, IDLE_COST, PRUNE, PRUNE_COST, REPORT, num, usd } from "../../components/figures/prompt-caching/data";
+
+Most of us picture an LLM call as a function: a prompt goes in, a response comes out. And we know how to cache a function: hash the input, check whether you've seen it, and if you have, return the stored output. That's output caching, and it works because a function's output depends only on its arguments.
+
+Prompt caching doesn't work like that. Teams that treat it as if it does can lose a large part of their inference budget without noticing.
+
+Here's what the function picture hides. An agent doesn't send a new prompt each turn. It sends the tool definitions, the system prompt, the project instructions, the conversation so far, and every tool call and result. The next turn sends all of that again, plus a little at the end. Once a session reaches 100,000 tokens, nearly every token in a request is one the model has already seen.
+
+<PrefixReuse />
+
+That's why prompt caching matters so much for agents. Without it, every turn pays to read the whole history again, so a session's cost grows with the square of its length. With it, the repeated prefix costs a fraction of the price. But a prompt cache is far more fragile than an output cache. Reorder the prompt, remove a tool, change a value in the middle or pause too long between turns, and the cache is gone. You pay full price again for tokens you already sent, and you usually find out when the invoice arrives.
+
+So treat the cache as more than an optimization. It sets your latency and your cost, and it constrains how you design tools, sessions and product features. Earendil's [Prompt Caching In Agents](https://earendil.com/posts/prompt-caching/) makes much of this case from inside the Pi coding agent, and several of the examples below build on it.
+
+## How does prompt caching work?
+
+A transformer handles a request in two phases. In **prefill**, it reads every input token and computes its attention state. In **decode**, it generates output tokens one at a time. Long prompts make prefill expensive; long answers make decode expensive. For agents, prefill usually dominates: the prompt is huge and the answer is often a short tool call.
+
+During prefill, each attention layer computes two vectors for every token, a **key** and a **value**. (These are arrays of numbers, not hash-table keys and values.) For each new token, the model computes a third vector, a **query**, compares it with every earlier token's key to decide how much each one matters, and takes a weighted average of their values. The key is what gets matched, the value is what gets read, and the result blends every earlier token rather than picking one.
+
+The **KV cache** stores those keys and values, so token 50,001 can attend to the 50,000 before it without recomputing them. It trades GPU memory for compute, and managing that memory is a central problem for serving systems like [vLLM](https://arxiv.org/abs/2309.06180).
+
+Prompt caching goes one step further and keeps the KV state after the response is done. If the next request starts with exactly the same tokens, the server reuses the stored keys and values for that prefix and runs prefill only on the rest. Nearly everything else in this post follows from one consequence of this.
+
+**The KV cache is only valid for an exact token prefix.** Each token's keys and values depend on every token before it. Change one token in the middle, and every token after it sits in a different context, so its stored state is wrong. Two prompts can mean the same thing and still tokenize differently; they share the cache up to their first difference and nothing after it.
+
+<FirstMismatch />
+
+An output cache asks, "Have I seen this input before?" A prompt cache asks, "How much of the start of this input have I already processed?" That second question is why prompt caches are fragile, and it's what the rest of this post is about.
+
+## Prompt caching in Anthropic and OpenAI: configuration and pricing
+
+Providers expose caching in two ways, and which one you use changes what you're responsible for.
+
+### Explicit breakpoints
+
+With Anthropic's [`cache_control`](https://platform.claude.com/docs/en/build-with-claude/prompt-caching), you mark the end of each stable section with a breakpoint: after the system prompt, say, and after the latest turn. The prefix is built in a fixed order, "`tools`, `system`, then `messages`", and the server writes or looks up the prefix ending at each breakpoint. You get up to four breakpoints and a choice of a 5-minute or 1-hour lifetime. A single top-level `cache_control` field turns on automatic caching instead, which keeps one breakpoint on the last block as the conversation grows. Either way, a hit requires every token before the breakpoint to match, and keeping the prefix stable is your job.
+
+### Automatic prefix caching
+
+OpenAI [caches automatically](https://developers.openai.com/api/docs/guides/prompt-caching): send a long enough prompt (1,024 tokens on current models) and it finds the reusable prefix itself. A `prompt_cache_key` helps route related requests to the same machines, but keys "do not pin requests to a machine or guarantee a cache hit," and they can't make two different prefixes match. The styles are converging: from GPT-5.6, OpenAI also accepts explicit breakpoints and charges for cache writes.
+
+| | Anthropic | OpenAI, GPT-5.6+ | vLLM, SGLang |
+|---|---|---|---|
+| Style | Explicit breakpoints (up to 4), or automatic | Automatic, or explicit breakpoints | Automatic, block by block, on your own GPUs |
+| Cache write | 1.25× base input (5 min), 2× (1 hour) | 1.25× (30 min), 2.5× (12 hours); no premium on earlier models | No price: it uses GPU memory |
+| Cache read | 0.1× base input; 0.05× or 0.025× on the newest models | 0.1×; 0.05× on some models | No price: it saves GPU compute |
+| Retention | 5 minutes or 1 hour, refreshed by each read | 30 minutes or 12 hours; earlier models 5 minutes to 24 hours | Your eviction policy |
+| Minimum prefix | 512 to 4,096 tokens, by model | 1,024 tokens | One KV block |
+| Adding tools without a miss | Tool search (`defer_loading`) | Tool search (`defer_loading`, GPT-5.4 and later) | Depends on the harness |
+| Cache key | None; breakpoints mark the prefix | `prompt_cache_key`: a routing hint | Whatever your router reads |
+
+The advice is the same on any of them. With explicit breakpoints, put each one right after content that won't change. With automatic caching, make everything above the conversation deterministic, because you can't see what the provider kept. And if a gateway sits between you and the model, check that it forwards cache keys, keeps session affinity and leaves your breakpoints alone. Not every gateway does all three.
+
+### Why there are three prices
+
+Every byte of KV state a provider keeps for you is GPU memory it can't give anyone else, reserved for the whole retention period whether you come back or not. Caching a prompt is a bet that you'll return before it expires. You know whether you will; the provider doesn't, so it charges for the bet.
+
+That's why one input token has three prices. A **cache write** costs more than base input: it's a deposit on the memory. A **cache read** costs a tenth of base input or less, because the work is already done. **Base input** is what you pay when there's nothing to read.
+
+<CachePrices />
+
+## How routing and KV cache storage affect cache hits
+
+A cache only helps if the next request can find it. KV state lives in the memory of one GPU, in one server, in a fleet of thousands, and your next request arrives at a load balancer that doesn't know which GPU did the work last time. There are two ways to get it back there.
+
+The first is **session affinity**, or sticky routing: keep the KV state on the GPU that computed it and send the session's later requests back to that worker. A session ID or cache key is the routing hint, which the router reads without parsing the prompt. It's cheap and fast when it works, but it constrains the scheduler. The worker can overload, restart or evict your entry when memory fills, and the router can decide that balancing load matters more than your hit. To the router, you're one session in a million.
+
+The second is **KV cache offloading**: copy KV blocks out of GPU memory into CPU memory, local SSD or shared storage, so other workers can load them. [LMCache](https://github.com/LMCache/LMCache) is a common open-source example. You gain flexibility and resilience, and take on a distributed storage system for tensors, with its own indexing, transfer costs and eviction policy.
+
+<KvRouting />
+
+Production systems mix these tiers with **cache-aware routing**, which sends each request to the worker holding the longest matching prefix. Each mix fails in its own way, and from your side you only ever see a hit or a miss.
+
+## How cache expiration increases AI agent costs
+
+You're two hours into a session, and the transcript is about {num(IDLE.history)} tokens: the system prompt, a few dozen tool definitions, a long conversation and hundreds of tool results. The agent finishes a change and starts the test suite, which takes {IDLE.gapMin} minutes. You get a coffee. When you come back the tests have passed, so you type "great, continue." Those two words cost more than the agent's entire next response.
+
+Cache entries expire after a short time-to-live (TTL). Anthropic's default is five minutes, shorter than many test suites, builds, code reviews and meetings. Each read resets the timer, so steady traffic keeps an entry alive indefinitely, but any gap longer than the TTL ends it.
+
+<IdleGap />
+
+To you, it was one continuous session. To the provider, it was two requests {IDLE.gapMin} minutes apart, and in that silence your KV state was evicted. The second request carried the same {num(IDLE.history)} tokens as the first, but the stored work was gone.
+
+Here's the math at $3 per million input tokens and $15 per million output tokens, with Anthropic's multipliers. On a hit, the history costs the read price, about {usd(IDLE_COST.hit)}. On a miss, it's processed again and written back at 1.25×, about {usd(IDLE_COST.miss)}. The 800-token response costs about {usd(IDLE_COST.response)}. The cost of a miss has nothing to do with how much changed. It depends on how many tokens come after the first mismatch, and in a long session that's almost all of them.
+
+Can you keep the cache longer? Sometimes. Anthropic offers a 1-hour TTL at twice the base price for writes; OpenAI offers 12-hour retention on its newest models and 24 hours on many earlier ones. Anthropic also accepts requests with `max_tokens: 0`, which refresh the cache without generating anything, so a harness can keep an entry warm through a long test run for the price of a read. Which is worth it depends on how long your gaps are. Either way, retention is a request, not a guarantee: your client can't stop a gateway from dropping an entry or a provider from evicting it when memory runs short.
+
+All of this points to the metric I'd watch most closely: **cache hit rate**, the share of input tokens served from the cache. Context length sets how large the bill can get; hit rate decides how much of it you pay.
+
+| Context per turn | 0% hit | 60% hit | 80% hit | 95% hit |
+|---|---|---|---|---|
+| 20k tokens | $0.06 | $0.03 | $0.02 | $0.01 |
+| 100k tokens | $0.30 | $0.14 | $0.08 | $0.04 |
+| 400k tokens | $1.20 | $0.55 | $0.34 | $0.17 |
+
+That's input cost per turn at $3 per million input tokens and 0.1× reads, before any write premium. In the 400k row, a cold cache costs seven times as much as a 95% hit rate.
+
+## How conversation branching affects prompt caching
+
+Here's another place where intuition fails. You think in sessions, your router thinks in session IDs, and your cache thinks in token sequences. Usually they line up. They come apart when a session branches.
+
+Most coding agents let you rewind, fork or branch a conversation, so a session is really a tree. Say the main branch runs root, A, B, C, D. A second branch leaves C and continues with E and F; a third leaves A and continues with Z. The router sees one session ID. The cache sees three token sequences that overlap only at the start.
+
+<SessionTree />
+
+What happens when you jump from D to F depends on how the provider built its cache. Some caches store a prefix as a chain of fixed-size blocks that different sequences can share: vLLM's [automatic prefix caching](https://docs.vllm.ai/en/latest/design/prefix_caching.html) hashes each block together with everything before it, and SGLang's [RadixAttention](https://arxiv.org/abs/2312.07104) keeps cached prefixes in a radix tree. With that design, the jump still reuses root through C. If the cache keeps only the latest sequence, the shared blocks were evicted or the request went to another worker, you reuse almost nothing. Jump to Z and you reuse root and A at best.
+
+The mismatch also runs the other way. Fork a session and you get a new session ID with much of the same context. If the cache is partitioned by session key, it misses that shared prefix entirely.
+
+The token prefix decides what can be reused. The session ID only helps the infrastructure find it.
+
+## How tool changes invalidate cached prompt prefixes
+
+Now for the most common way agent teams break their own cache. It's tricky because it looks like good engineering.
+
+Tool definitions come first. Anthropic renders them before even the system prompt, and OpenAI routes requests on a hash of the first tokens, "including tool definitions." Each tool's name, description and JSON schema become ordinary tokens. So add a tool, remove one, edit a schema or serialize the list in a different order, and the first mismatch lands at the start of the request. Everything after it, including the whole conversation, is processed again at full price.
+
+Lazy tool loading hurts most. The reasoning sounds right: why send forty tool schemas on turn one if the agent uses three? Load each tool when it's needed. Plenty of plugin systems and MCP tool catalogs work this way. But the moment the tool list changes, the cached conversation after it is invalid. You saved a few hundred tokens of schema and paid to process 60,000 tokens of conversation again.
+
+<ToolLoading />
+
+### When to use tool search and deferred tool loading
+
+The APIs now offer a fix, called **tool search** or **deferred tool loading**. You still declare every tool, but mark most as deferred, and the model doesn't see a deferred tool until it searches for one. The definition it finds arrives inside a tool result at that point in the conversation, so the tool list at the top, and the prefix, stay the same.
+
+In Anthropic's API, you set `defer_loading: true` on each deferred tool and include a [tool search tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool); its results carry `tool_reference` blocks that expand into the definitions. OpenAI's Responses API supports [`tool_search`](https://developers.openai.com/api/docs/guides/tools-tool-search) with `defer_loading` on GPT-5.4 and later, and appends discovered tools "at the end of context." Anthropic also has a beta (`inline-tools-2026-09-15`) for adding or changing a tool from a mid-conversation system message, leaving `tools` exactly as first sent. If your model supports none of these, the client must resend the tool list, which works but invalidates the cache.
+
+Tool search only helps when you add tools. Removing tools, swapping sets or editing prompt snippets still changes earlier input. So does anything above the conversation that varies between turns:
+
+- **A timestamp or request ID in the system prompt.** It differs on every request, so the hit rate is near zero for the whole session.
+- **Tool definitions serialized from a hash map.** The order changes between processes, causing random misses that are hard to debug. Sort them.
+- **A project summary regenerated every turn.** It changes whenever a file changes, so most turns miss.
+- **Extensions that inject context near the top.** Each injection invalidates everything after it.
+
+The fix is to put changing content after the stable prefix, not inside it. On recent Claude models, for example, Anthropic's API accepts system messages mid-conversation, so instructions and state can arrive at the turn they apply to without touching the cached system prompt. Request settings matter too. In Anthropic's API, changing `tool_choice` or adding or removing an image invalidates the cached messages but keeps the cached tools and system prompt. Changing thinking or effort settings invalidates the cached messages too, and on some models the tools and system prompt as well.
+
+There's also a people problem. An [agent harness](https://arize.com/resources/harness-engineering/), the program that runs the agent loop, calls the model and runs the tools, can offer cache-friendly features, but it can't force every extension and plugin to use them. And developers on a flat subscription never see what misses cost. Nobody watches the bill, so nobody fixes the cache, until someone moves to pay-per-token pricing and the bill triples.
+
+## When context pruning increases inference costs
+
+The logic of pruning is simple: cost rises with the tokens you send, so send fewer. Delete old tool results, summarize the middle of the conversation, keep the prompt small. Near the context limit, you sometimes have to.
+
+But deleting from the middle of a transcript changes the prefix at that point, as the pruning case in Fig. 02 shows. Every token after the cut follows a mismatch and is processed again at full price. You removed a few thousand tokens that cost only the read price and paid full price for everything after them.
+
+We can work out when a prune pays for itself:
+
+```text
+one-time rewrite cost   ≈ tokens after the edit × (base price − read price)
+savings per later turn  ≈ pruned tokens × read price
+turns to break even     ≈ rewrite cost ÷ savings per turn
+```
+
+Take Fig. 02's prune: {num(PRUNE.pruned)} tokens removed, {num(PRUNE.after)} after the cut, with Anthropic's multipliers. The one-time cost is {num(PRUNE.after)} × (1 − 0.1) = {num(PRUNE_COST.rewrite)} tokens' worth of base price. The savings are {num(PRUNE.pruned)} × 0.1 = {num(PRUNE_COST.savedPerTurn)} tokens' worth per turn. The prune breaks even after about {Math.round(BREAK_EVEN.turns)} more turns with no other misses, or about {Math.round(BREAK_EVEN.turnsWithWrite)} if the rewritten tokens also pay the 1.25× write premium. Most sessions end well before that.
+
+<PruneBreakEven />
+
+Pruning has a second cost that isn't money. Old tool results are the evidence behind the model's later decisions. A summary keeps the conclusions and drops the evidence, and the model can degrade in ways that are hard to trace: it sounds as confident as before, but the data behind its conclusions is gone.
+
+So aim for a stable transcript that you mostly append to. **Compaction**, replacing old conversation with a summary, is still the right tool near the context limit. Treat it as what it is, a deliberate cache reset that starts a new prefix, and count it that way in your session metrics.
+
+Pruning does make sense when your provider's read discount is small, so a miss costs little; when your workload can't keep a stable prefix anyway; or when you're switching providers, since KV state belongs to one model and can't move with you. The goal is the right balance of context quality, cache reuse, latency and price, not the smallest possible prompt.
+
+## How gateways and model routing affect caching costs
+
+Caching also changes who wants what in the inference stack.
+
+You want cache hits because they're cheaper and faster. The operator that owns the GPUs wants them too, because less prefill means more requests per GPU. A good read discount keeps your interests aligned.
+
+Now put a gateway, router or reseller in between. If it bills you for input at the base price, a miss makes your invoice bigger. Whether it also earns the gateway more depends on its upstream contracts and on who runs the cache. But in a badly designed stack, the party that makes routing decisions doesn't pay for misses, and the party that bills you earns more when they happen. I don't think anyone breaks caches on purpose. You should still be able to see cache performance directly, rather than infer it from a surprising bill three weeks later.
+
+The tradeoff runs the other way too. Always routing for cache hits means giving up routing for anything else. Sometimes a miss is worth it to move to a model that's cheaper for the rest of the session, or to a more reliable provider. Caches don't move between models or providers, so every routing decision is also a cache decision, and the right call depends on how much history the session has built up.
+
+## How cache hit rate and context length affect session costs
+
+Most of an agent session's cost is input tokens, and once sessions get long, most of the input cost depends on hit rate. Two sessions that do the same work and produce the same output can differ in cost several times over, just because one kept its prefix stable.
+
+Latency follows the same pattern. A miss means running prefill again, the slow part of a long prompt, so misses raise time to first token. Agents that miss often feel slow as well as costing more, and users tend to blame the model. Before blaming the cache for a slowdown, though, check time to first token against the cached-token counts, the model settings and the provider's status.
+
+This leads to a result that surprises people: **long context isn't the problem; unstable context is.** A stable 100,000-token transcript served at the read price is cheap. A 20,000-token transcript with a timestamp in the system prompt, a tool list that changes every turn and a pruning pass every few turns can cost more per turn, because almost none of it hits the cache.
+
+<StableVsUnstable />
+
+You can still ship branching, dynamic tool catalogs, model switching and history rewriting. Just know what each does to the prefix, and what that costs, before you ship it.
+
+## How to measure and debug prompt cache misses
+
+What can you control? A harness can do a lot to keep stable input stable. It can send a consistent session ID and whatever cache hints the provider accepts, place breakpoints where the API needs them, defer tool loading where the model supports it, avoid rewriting old context without good reason, and record cache reads and writes on every request.
+
+It can't control anything after the request leaves the machine: the provider's eviction policy, a cache lifetime beyond what the API allows, a particular GPU staying up, a gateway honoring session affinity, or a plugin changing the prefix.
+
+But it can show you how the cache is doing. Every major provider reports cache activity on each response, and few teams look at it:
+
+- **Anthropic** returns `cache_read_input_tokens`, `cache_creation_input_tokens` and `input_tokens`, where `input_tokens` counts only the tokens after the last breakpoint. The prompt's size is the sum of all three.
+- **OpenAI** reports `cached_tokens` in the input token details, counted within the input total, and `cache_write_tokens` on GPT-5.6 and later.
+- **Traces.** If you instrument with [OpenInference](https://arize.com/docs/ax/concepts/otel-openinference/semantic-conventions), the same counts land on each LLM span as `llm.token_count.prompt_details.cache_read` and `cache_write`, so you can chart them next to latency.
+
+### Calculate a token-weighted cache hit rate
+
+Token-weighted hit rate is the share of input tokens served from the cache:
+
+**Cache hit rate = total cache-read tokens ÷ total input tokens**
+
+For a session, sum the cache-read tokens across all requests and divide by the sum of their input tokens. Don't average per-request hit rates: that gives a 14,000-token request the same weight as a 140,000-token one. In the session below, the average of per-request rates is {Math.round(REPORT.meanOfRates * 100)}% while the token-weighted rate is {Math.round(REPORT.hit * 100)}%.
+
+Track cache writes separately when you calculate cost. New content is written to the cache too, so uncached tokens alone don't prove that cached content was lost.
+
+Here's what that looks like for one session, traced turn by turn:
+
+<SessionTrace />
+
+The session was {Math.round(REPORT.hit * 100)}% cached with only two misses, yet those misses cost {usd(REPORT.extra)}, about {Math.round(REPORT.extraShare * 100)}% of the {usd(REPORT.cost)} session. A dollar amount tied to specific events is far easier to act on than an abstract hit rate.
+
+### Identify why cache reuse dropped
+
+When you know why a miss happened, label it. The client can detect model switches, idle gaps longer than the TTL, compactions and tool changes. When you don't know, say so: "cache miss, cause unknown" beats a guess about what happened inside the provider. Anthropic's cache diagnostics beta can narrow it down: pass the previous response's ID, and the response says whether the two requests diverged in the model, system prompt, tools or message history.
+
+When reuse is lower than expected, first rule out the basics: the prompt meets the model's minimum cacheable length, and the request carries the cache configuration the API needs. Then check these causes:
+
+1. **Idle time.** A build, a test run, a review or a break lasted longer than the retention period.
+2. **A model or provider switch.** KV state belongs to one model. It can't move to another model or provider.
+3. **Branch navigation.** A rewind, fork or branch switch changed the token sequence while the session ID stayed the same.
+4. **Compaction or history rewriting.** Deliberate, but it starts a new prefix.
+5. **Tool or request-setting changes.** Tools added, removed, reordered or edited without deferred loading, or a setting such as `tool_choice` or reasoning effort changed.
+6. **Dynamic system prompts.** Timestamps, random values, regenerated project context or injected snippets.
+7. **Extensions that change history.** Something between your transcript and the API request edits old messages.
+8. **Provider routing and eviction.** The prompt was identical, but the request reached a worker that didn't hold its KV blocks.
+
+You can fix the first seven yourself. The eighth you can only observe, which is why the trace is worth building.
+
+Finally, put cache hit rate on the same dashboard as latency and error rate. For an agent it's both a reliability metric and a cost metric, and often the number that explains why a session that should have cost a dollar cost eight.
+
+## Prompt caching best practices for AI agents
+
+Prompt caching isn't output caching. It saves the work of reading a prefix, so it depends on position and order, needs an exact match, and breaks when anything near the start changes.
+
+The provider's job is to keep KV state where the next request can find it, which is why writes cost extra and reads are cheap. Your job is to keep the prefix stable: append-only transcripts, deterministic tool lists and system prompts, deferred tool loading, and compaction only when you choose it.
+
+You can't improve a hit rate you can't see. Measure how much of each request your agent reuses and what it pays for the rest, and judge every change against task success and latency, so that a lower token bill means a better agent.
+
+If you take away one thing, let it be this: the cheapest agents won't be the ones with the shortest prompts. They'll be the ones whose prompts almost never change at the start.

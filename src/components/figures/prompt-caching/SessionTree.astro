@@ -1,0 +1,85 @@
+---
+import Figure from "../../figure/Figure.astro";
+import Diagram from "../../figure/diagram/Diagram.astro";
+import Node from "../../figure/diagram/Node.astro";
+import Wire from "../../figure/diagram/Wire.astro";
+import Zone from "../../figure/diagram/Zone.astro";
+import Strip from "../../figure/diagram/Strip.astro";
+import Legend from "../../figure/diagram/Legend.astro";
+import type { Seg } from "../../figure/diagram/strip";
+
+const NW = 48, NH = 30, STEP = 68;
+const MAIN = 128, UP = 64, DOWN = 192;
+const TX = 16;
+const nodes = [
+  { id: "root", x: TX, y: MAIN },
+  { id: "A", x: TX + STEP, y: MAIN },
+  { id: "B", x: TX + STEP * 2, y: MAIN },
+  { id: "C", x: TX + STEP * 3, y: MAIN },
+  { id: "D", x: TX + STEP * 4, y: MAIN },
+  { id: "E", x: TX + STEP * 4, y: UP },
+  { id: "F", x: TX + STEP * 5, y: UP },
+  { id: "Z", x: TX + STEP * 2, y: DOWN },
+];
+const at = Object.fromEntries(nodes.map((n) => [n.id, n]));
+const mid = (id: string) => at[id].y + NH / 2;
+const right = (id: string) => at[id].x + NW;
+const center = (id: string) => at[id].x + NW / 2;
+const edges = [
+  { k: "e-A", pts: [[right("root"), MAIN + NH / 2], [at.A.x, MAIN + NH / 2]] },
+  { k: "e-B", pts: [[right("A"), MAIN + NH / 2], [at.B.x, MAIN + NH / 2]] },
+  { k: "e-C", pts: [[right("B"), MAIN + NH / 2], [at.C.x, MAIN + NH / 2]] },
+  { k: "e-D", pts: [[right("C"), MAIN + NH / 2], [at.D.x, MAIN + NH / 2]] },
+  { k: "e-E", pts: [[center("C"), MAIN], [center("C"), mid("E")], [at.E.x, mid("E")]] },
+  { k: "e-F", pts: [[right("E"), mid("E")], [at.F.x, mid("F")]] },
+  { k: "e-Z", pts: [[center("A"), MAIN + NH], [center("A"), mid("Z")], [at.Z.x, mid("Z")]] },
+] as { k: string; pts: [number, number][] }[];
+
+const SX = 520, SW = 80;
+const seq = (ids: string[], shared: number, r: number): Seg[] =>
+  ids.map((id, i) => ({ k: `s${r}-${id}`, label: id, w: SW, state: i < shared ? "cached" : "full" }));
+const rows = [
+  { r: 1, y: 52, title: "Branch 1 (active)", note: "cached", segs: seq(["root", "A", "B", "C", "D"], 5, 1) },
+  { r: 2, y: 130, title: "Switch D → F", note: "reuses root–C with block-level caching", segs: seq(["root", "A", "B", "C", "E", "F"], 4, 2) },
+  { r: 3, y: 208, title: "Switch D → Z", note: "reuses root–A at best", segs: seq(["root", "A", "Z"], 2, 3) },
+];
+---
+
+<Figure
+  title="Prefix reuse across conversation branches"
+  width="wide"
+  ground="dots"
+>
+  <Diagram
+    id="session-tree"
+    height={262}
+    label="A conversation tree in one session. The main branch runs root, A, B, C, D. A second branch leaves C and continues E, F. A third leaves A and continues Z. The cache sees three token sequences. Jumping from D to F can reuse root through C if the cache stores shared blocks, and prefills E and F. Jumping from D to Z reuses root and A at best, and prefills Z."
+  >
+    <Zone x={0} y={0} w={480} h={262} tag="Session 7f3a" note="one session ID" />
+    {edges.map((e) => <Wire k={e.k} points={e.pts} radius={6} />)}
+    {nodes.map((n) => <Node x={n.x} y={n.y} w={NW} h={NH} title={n.id} center titleY={n.y + 20} k={`n-${n.id}`} />)}
+    <text class="d-tag" x={right("D") + 14} y={MAIN + 19} data-key="l-1">Branch 1</text>
+    <text class="d-tag" x={right("F") + 14} y={UP + 19} data-key="l-2">Branch 2</text>
+    <text class="d-tag" x={right("Z") + 14} y={DOWN + 19} data-key="l-3">Branch 3</text>
+
+    <text class="d-tag" x={SX} y={26}>Token sequences</text>
+    {rows.map((row) => (
+      <g data-key={`row-${row.r}`}>
+        <text class="d-title" x={SX} y={row.y}>{row.title}</text>
+        <text class="d-mono d-dim" x={1032} y={row.y} text-anchor="end">{row.note}</text>
+        <Strip x={SX} y={row.y + 12} segs={row.segs} />
+      </g>
+    ))}
+  </Diagram>
+  <Legend
+    items={[
+      { swatch: "cached", label: "shared with a cached sequence" },
+      { swatch: "full", label: "prefilled at full price" },
+    ]}
+  />
+  <Fragment slot="caption">
+    The router sees one session; the cache sees three token sequences. Block-level caches such as vLLM's automatic
+    prefix caching and SGLang's RadixAttention share the common blocks between branches. A cache that keeps only the
+    latest sequence, or a request that lands on another worker, reuses far less.
+  </Fragment>
+</Figure>

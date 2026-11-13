@@ -1,0 +1,150 @@
+---
+import Figure from "../../figure/Figure.astro";
+import Diagram from "../../figure/diagram/Diagram.astro";
+import Strip from "../../figure/diagram/Strip.astro";
+import Legend from "../../figure/diagram/Legend.astro";
+import { layoutStrip, type Seg } from "../../figure/diagram/strip";
+
+/** The cached prompt: tool definitions, system prompt and ten turns (thousands of tokens). */
+const BASE = [
+  { id: "tools", label: "tools", k: 8 },
+  { id: "system", label: "system", k: 6 },
+  { id: "t1", label: "t1", k: 6 },
+  { id: "t2", label: "t2", k: 6 },
+  { id: "t3", label: "t3", k: 4 },
+  { id: "t4", label: "t4", k: 4 },
+  ...[5, 6, 7, 8, 9, 10].map((n) => ({ id: `t${n}`, label: `t${n}`, k: 10 })),
+];
+const PX = 10.2;
+const total = BASE.reduce((a, p) => a + p.k, 0);
+
+interface Case {
+  title: string;
+  /** Index of the first segment that differs from the cache. */
+  at: number;
+  /** Replace the label of the changed segment. */
+  changed?: string;
+  /** Segments removed from the prompt. */
+  drop?: string[];
+}
+const CASES: Case[] = [
+  { title: "Tool result t9 edited", at: 10, changed: "t9′" },
+  { title: "Tool results t3 and t4 pruned", at: 4, drop: ["t3", "t4"] },
+  { title: "Timestamp in the system prompt", at: 1, changed: "system′" },
+  { title: "Tool list reordered", at: 0, changed: "tools′" },
+];
+
+const PITCH = 100;
+const ref = { y: 22, segs: BASE.map((p): Seg => ({ k: `c0-${p.id}`, label: p.label, w: p.k * PX, state: "cached" })) };
+const rows = CASES.map((c, i) => {
+  const parts = BASE.filter((p) => !c.drop?.includes(p.id));
+  const segs = parts.map((p, j): Seg => ({
+    k: `c${i + 1}-${p.id}`,
+    label: j === c.at && c.changed ? c.changed : p.label,
+    w: p.k * PX,
+    state: j < c.at ? "cached" : "full",
+  }));
+  const reused = parts.slice(0, c.at).reduce((a, p) => a + p.k, 0);
+  const redone = parts.slice(c.at).reduce((a, p) => a + p.k, 0);
+  const y = ref.y + (i + 1) * PITCH;
+  const placed = layoutStrip(segs, 0);
+  const markX = Math.max(0.75, placed[c.at].x - 3);
+  const cutW = c.drop ? BASE.filter((p) => c.drop!.includes(p.id)).reduce((a, p) => a + p.k, 0) : 0;
+  return { ...c, i: i + 1, y, segs, reused, redone, markX, cutW };
+});
+const END = 1032;
+const LABEL = [
+  `A cached prompt of ${total}k tokens: tool definitions, a system prompt and turns t1 to t10, compared with four edits.`,
+  ...rows.map((r) => `${r.title}: ${r.reused}k tokens reused, ${r.redone}k processed again at full price.`),
+].join(" ");
+const H = rows[rows.length - 1].y + 14 + 30 + 40;
+---
+
+<Figure
+  title="Cache reuse up to the first mismatch"
+  width="wide"
+  ground="dots"
+  scene="first-mismatch"
+  status="Everything after the first changed token is processed again at full price, however small the change. The nearer the front, the more you pay."
+>
+  <Diagram
+    id="first-mismatch"
+    height={H}
+    label={LABEL}
+  >
+    <text class="d-title" x={0} y={ref.y}>Cached prefix (previous turn)</text>
+    <text class="d-mono d-dim" x={END} y={ref.y} text-anchor="end">{total}k tokens</text>
+    <Strip x={0} y={ref.y + 14} segs={ref.segs} />
+
+    {rows.map((r) => (
+      <g>
+        <text class="d-title" x={0} y={r.y}>{r.title}</text>
+        <text class="d-mono" x={END} y={r.y} text-anchor="end" data-key={`c${r.i}-read`}>
+          <tspan class="d-dim">{r.reused ? `${r.reused}k reused` : "nothing reused"} · </tspan><tspan class="d-accent">{r.redone}k reprocessed</tspan>
+        </text>
+        <Strip x={0} y={r.y + 14} segs={r.segs} k={`c${r.i}-strip`} />
+        <g data-key={`c${r.i}-mark`}>
+          <line class="d-mark" x1={r.markX} x2={r.markX} y1={r.y + 8} y2={r.y + 52} />
+          <text class="d-tag" x={r.markX} y={r.y + 68} text-anchor={r.at === 0 ? "start" : "middle"}>
+            {r.drop ? `First mismatch · ${r.cutW}k cut here` : "First mismatch"}
+          </text>
+        </g>
+      </g>
+    ))}
+  </Diagram>
+  <Legend
+    items={[
+      { swatch: "cached", label: "matches the cache: read at the cache price" },
+      { swatch: "full", label: "after the first mismatch: processed at full price" },
+    ]}
+  />
+  <Fragment slot="caption">
+    Token counts in thousands, in Anthropic's order: tool definitions, then the system prompt, then messages. OpenAI
+    doesn't document its order, but tool definitions are part of its prefix too.
+  </Fragment>
+</Figure>
+
+<script>
+  import { defineScene } from "../../figure/motion";
+
+  const CASES = 4;
+  defineScene("first-mismatch", {
+    setup(s) {
+      for (let i = 1; i <= CASES; i++) {
+        s.hide([`c${i}-strip`, `c${i}-mark`, `c${i}-read`]);
+        s.state(segs(s.root, i), "plain");
+      }
+      s.caption("");
+    },
+    async play(s) {
+      const captions = [
+        "An edit near the end. Everything before t9 still matches, so only the last 20k tokens are processed again.",
+        "Pruning makes the prompt shorter, but t5 now follows t2, which the cache has never seen. Everything from there on is new.",
+        "A timestamp at the top of the system prompt changes on every request. Only the tool definitions, which come first, survive.",
+        "Reorder the tool list and the first token differs. Nothing is reused.",
+      ];
+      await s.wait(500);
+      for (let i = 1; i <= CASES; i++) {
+        s.caption(captions[i - 1], i, CASES);
+        const keys = segs(s.root, i);
+        const states = keys.map((k) => s.root.querySelector(`[data-key="${k}"]`)!.getAttribute("data-final"));
+        s.show(`c${i}-strip`);
+        await s.wait(350);
+        const at = states.indexOf("full");
+        await s.sweep(keys.slice(0, at), "cached", 70);
+        s.show(`c${i}-mark`);
+        await s.wait(500);
+        await s.sweep(keys.slice(at), "full", 45);
+        s.show(`c${i}-read`);
+        await s.wait(i === CASES ? 600 : 2000);
+      }
+    },
+  });
+
+  function segs(root: HTMLElement, i: number) {
+    return Array.from(root.querySelectorAll<SVGElement>(`[data-key="c${i}-strip"] .d-seg`), (el) => {
+      if (!el.dataset.final) el.dataset.final = el.getAttribute("data-state") ?? "";
+      return el.dataset.key!;
+    });
+  }
+</script>

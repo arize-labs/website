@@ -1,0 +1,36 @@
+---
+/**
+ * A prompt as a row of segments (system prompt, tools, turns), in the order
+ * the model reads them. Each segment's state says what the request paid for
+ * it: plain (not yet evaluated), cached (read from the prompt cache: dot
+ * texture), full (processed at the full input price: accent tint and edge),
+ * ghost (not sent yet). Scenes change a segment's state by its `k`.
+ *
+ * Labels that don't fit their segment are left out, so give narrow segments
+ * a short label or none.
+ */
+import { labelFits, layoutStrip, type Seg } from "./strip";
+
+export interface Props {
+  x: number;
+  y: number;
+  h?: number;
+  gap?: number;
+  segs: Seg[];
+  /** data-key on the whole strip, to show or hide it at once. */
+  k?: string;
+}
+const { x, y, h = 30, gap = 6, segs, k } = Astro.props;
+const placed = layoutStrip(segs, x, gap);
+---
+
+<g class="d-strip" data-key={k}>
+  {placed.map((s) => (
+    <g class="d-seg" data-key={s.k} data-state={s.state ?? "plain"}>
+      <rect x={s.x} y={y} width={s.w} height={h} rx="3" />
+      {s.label && labelFits(s.label, s.w) && (
+        <text x={s.x + s.w / 2} y={y + h / 2 + 4} text-anchor="middle">{s.label}</text>
+      )}
+    </g>
+  ))}
+</g>

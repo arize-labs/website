@@ -160,6 +160,25 @@ export class Scene {
   wait(ms: number) {
     return this.tween(ms, () => {});
   }
+  /**
+   * Show elements one after another, each as a whole, `step` ms apart: the
+   * build-in for diagrams, in the order a reader would read them. Pass a
+   * state to set on each as it appears.
+   */
+  async reveal(keys: string[], step = 90, state?: string) {
+    for (const k of keys) {
+      if (state !== undefined) this.state(k, state);
+      this.show(k);
+      await this.wait(step);
+    }
+  }
+  /** Change the state of elements one after another, `step` ms apart. */
+  async sweep(keys: string[], state: string | null, step = 60) {
+    for (const k of keys) {
+      this.state(k, state);
+      await this.wait(step);
+    }
+  }
   /** Animate a numeric attribute to `to` (default: its markup value). */
   grow(key: string, attr: string, ms: number, to?: number, from?: number) {
     const el = this.$(key);

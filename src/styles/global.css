@@ -102,7 +102,7 @@ a { color: inherit; }
 .prose ul, .prose ol { padding-left: 1.25em; }
 .prose blockquote { padding-left: var(--space-4); border-left: 2px solid var(--accent); color: var(--soft); }
 .prose code { font: 0.88em var(--font-mono); }
-.prose :not(pre) > code { padding: 0.1em 0.3em; background: var(--placeholder); }
+.prose :not(pre) > code { padding: 0.1em 0.3em; background: var(--placeholder); overflow-wrap: anywhere; }
 .prose pre { padding: var(--space-4); overflow-x: auto; font-size: var(--text-small); line-height: 1.5; border: 1px solid var(--rule); }
 .prose img { border: 1px solid var(--rule); }
 .prose figure img { width: 100%; }

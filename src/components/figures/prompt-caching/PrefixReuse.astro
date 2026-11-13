@@ -1,0 +1,116 @@
+---
+import Figure from "../../figure/Figure.astro";
+import Diagram from "../../figure/diagram/Diagram.astro";
+import Strip from "../../figure/diagram/Strip.astro";
+import Legend from "../../figure/diagram/Legend.astro";
+import { layoutStrip, type Seg } from "../../figure/diagram/strip";
+import { num } from "./data";
+
+/** What each turn appends, in render order (Anthropic renders tools first). */
+const PARTS = [
+  { id: "tools", label: "tools", w: 180, tokens: 6_000 },
+  { id: "system", label: "system", w: 112, tokens: 2_000 },
+  { id: "u1", label: "user", w: 70, tokens: 150 },
+  { id: "a1", label: "reply", w: 84, tokens: 400 },
+  { id: "r1", label: "tool result", w: 164, tokens: 5_200 },
+  { id: "u2", label: "user", w: 70, tokens: 100 },
+  { id: "a2", label: "reply", w: 84, tokens: 350 },
+  { id: "r2", label: "tool result", w: 150, tokens: 3_800 },
+  { id: "u3", label: "user", w: 70, tokens: 80 },
+];
+/** How many parts each turn sends. */
+const SENDS = [3, 6, 9];
+const PITCH = 86;
+const rows = SENDS.map((n, r) => {
+  const prev = r === 0 ? 0 : SENDS[r - 1];
+  const segs: Seg[] = PARTS.slice(0, n).map((p, i) => ({ k: `t${r}-${p.id}`, label: p.label, w: p.w, state: i < prev ? "cached" : "full" }));
+  const tokens = (from: number, to: number) => PARTS.slice(from, to).reduce((a, p) => a + p.tokens, 0);
+  const cached = tokens(0, prev);
+  const fresh = tokens(prev, n);
+  return { r, y: 24 + r * PITCH, segs, prev, n, cached, fresh };
+});
+const last = rows[rows.length - 1];
+const placed = layoutStrip(last.segs, 0);
+const cut = placed[last.prev];
+const BY = last.y + 14 + 30 + 12;
+const prefixEnd = cut.x - 6;
+const end = placed[placed.length - 1].x + placed[placed.length - 1].w;
+---
+
+<Figure
+  title="Prefix reuse across agent turns"
+  width="wide"
+  ground="dots"
+  scene="prefix-reuse"
+  status="Each request repeats everything before it. Only the tail is new; caching lets the server skip prefill for the rest."
+>
+  <Diagram
+    id="prefix-reuse"
+    height={BY + 40}
+    label="Three requests from one agent session, drawn as rows of segments. Turn 1 sends tool definitions, the system prompt and a user message, and all 8,150 tokens are prefilled. Turn 2 sends the same three segments again plus a reply, a tool result and a new user message: the first 8,150 tokens come from the cache and 5,700 are prefilled. Turn 3 repeats all of turn 2 from the cache, 13,850 tokens, and prefills only 4,230 new ones."
+  >
+    {rows.map((row) => (
+      <g>
+        <text class="d-tag" x={0} y={row.y}>Turn {row.r + 1}</text>
+        <text class="d-mono" x={end} y={row.y} text-anchor="end" data-key={`read-${row.r}`}>
+          {row.cached > 0 && <tspan class="d-dim">{num(row.cached)} from cache · </tspan>}
+          <tspan class="d-accent">{num(row.fresh)} prefilled</tspan>
+        </text>
+        <Strip x={0} y={row.y + 14} segs={row.segs} />
+      </g>
+    ))}
+    <g data-key="brackets">
+      <path class="d-bracket" d={`M0,${BY - 6}V${BY}H${prefixEnd}V${BY - 6}`} />
+      <text class="d-tag" x={prefixEnd / 2} y={BY + 18} text-anchor="middle">Reused prefix</text>
+      <path class="d-bracket" data-tone="accent" d={`M${cut.x},${BY - 6}V${BY}H${end}V${BY - 6}`} />
+      <text class="d-tag d-accent" x={(cut.x + end) / 2} y={BY + 18} text-anchor="middle">New work</text>
+    </g>
+  </Diagram>
+  <Legend
+    items={[
+      { swatch: "cached", label: "read from the prompt cache" },
+      { swatch: "full", label: "prefilled at the full input price" },
+    ]}
+  />
+  <Fragment slot="caption">
+    Three turns of an agent session, with illustrative token counts. In a real session the prefix grows to tens or
+    hundreds of thousands of tokens while the tail stays at a few thousand.
+  </Fragment>
+</Figure>
+
+<script>
+  import { defineScene } from "../../figure/motion";
+
+  defineScene("prefix-reuse", {
+    setup(s) {
+      const segs = Array.from(s.root.querySelectorAll<SVGElement>(".d-seg[data-key]"), (el) => el.dataset.key!);
+      s.hide([...segs, "read-0", "read-1", "read-2", "brackets"]);
+      s.caption("");
+    },
+    async play(s) {
+      const row = (r: number) => Array.from(s.root.querySelectorAll<SVGElement>(`.d-seg[data-key^="t${r}-"]`), (el) => el.dataset.key!);
+      const prev = [0, 3, 6];
+      await s.wait(500);
+      s.caption("Turn 1. The harness sends the tools, the system prompt and the user's message. The model reads every token: this is prefill.", 1, 3);
+      await s.reveal(row(0), 140);
+      s.show("read-0");
+      await s.wait(1600);
+      for (const r of [1, 2]) {
+        s.caption(
+          r === 1
+            ? "Turn 2. The same prefix goes out again, plus a reply, a tool result and a new message. The server has already read the prefix, so it comes from the cache."
+            : "Turn 3. The reused prefix is now everything from turn 2. The new work is still only the tail.",
+          r + 1,
+          3,
+        );
+        const keys = row(r);
+        await s.reveal(keys.slice(0, prev[r]), 45);
+        await s.wait(250);
+        await s.reveal(keys.slice(prev[r]), 140);
+        s.show(`read-${r}`);
+        await s.wait(r === 1 ? 2200 : 700);
+      }
+      s.show("brackets");
+    },
+  });
+</script>

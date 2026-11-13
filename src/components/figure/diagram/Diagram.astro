@@ -21,6 +21,7 @@ export interface Props {
 const { id, width = 1032, height, label, minWidth = 820 } = Astro.props;
 const dots = `${id}-dots`;
 const hatch = `${id}-hatch`;
+const fine = `${id}-fine`;
 ---
 
 <svg
@@ -28,11 +29,15 @@ const hatch = `${id}-hatch`;
   viewBox={`0 0 ${width} ${height}`}
   role="img"
   aria-label={label}
-  style={`--d-min: ${minWidth}px; --d-dots: url(#${dots}); --d-hatch: url(#${hatch});`}
+  style={`--d-min: ${minWidth}px; --d-dots: url(#${dots}); --d-hatch: url(#${hatch}); --d-fine: url(#${fine});`}
 >
   <defs>
     <pattern id={dots} width="3" height="3" patternUnits="userSpaceOnUse">
       <circle class="d-pat-dot" cx="1.5" cy="1.5" r="0.85" />
+    </pattern>
+    <pattern id={fine} width="4" height="4" patternUnits="userSpaceOnUse">
+      <rect class="d-pat-fine-ground" width="4" height="4" />
+      <circle class="d-pat-fine" cx="2" cy="2" r="0.8" />
     </pattern>
     <pattern id={hatch} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
       <line class="d-pat-hatch" x1="0" y1="0" x2="0" y2="5" />

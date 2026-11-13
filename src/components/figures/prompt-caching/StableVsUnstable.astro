@@ -1,0 +1,65 @@
+---
+import Figure from "../../figure/Figure.astro";
+import Legend from "../../figure/diagram/Legend.astro";
+import { PRICE, SESSIONS, kTok, usd } from "./data";
+
+/** HTML rather than SVG, so the rows reflow on phones like the other charts. */
+const longest = Math.max(...SESSIONS.map((s) => s.total));
+const [a, b] = SESSIONS;
+const more = Math.round((b.cost / a.cost - 1) * 100);
+---
+
+<Figure title="Per-turn input cost: stable vs. unstable prefix">
+  <div class="svu" role="img" aria-label={`Session A sends ${kTok(a.total)} tokens a turn with a stable prefix; ${Math.round(a.hit * 100)}% come from the cache and the turn's input costs ${usd(a.cost, 3)}. Session B sends ${kTok(b.total)} tokens with a timestamp in its system prompt; ${Math.round(b.hit * 100)}% come from the cache and the input costs ${usd(b.cost, 3)}. B sends a fifth of the tokens and pays ${more}% more.`}>
+    {SESSIONS.map((s) => (
+      <div class="svu-row">
+        <p class="svu-head">
+          <b>{s.label}</b>
+          <span class="svu-cost"><span class="svu-accent">{usd(s.cost, 3)}</span> per turn</span>
+        </p>
+        <p class="svu-note">{s.note}, {Math.round(s.hit * 100)}% cached</p>
+        <div class="svu-bar" style={`width: ${(s.total / longest) * 100}%`}>
+          <span class="svu-seg" data-state="cached" style={`flex-grow: ${s.cached}`}>{s.hit > 0.5 && <span class="svu-label">{kTok(s.cached)} from cache</span>}</span>
+          <span class="svu-seg" data-state="full" style={`flex-grow: ${s.total - s.cached}`}>{kTok(s.total - s.cached)}</span>
+        </div>
+      </div>
+    ))}
+  </div>
+  <Legend
+    items={[
+      { swatch: "cached", label: "read from the cache" },
+      { swatch: "full", label: "processed at full price" },
+    ]}
+  />
+  <Fragment slot="caption">
+    Input cost for one turn at ${PRICE.base} per million input tokens with reads at {PRICE.read}×. Session B sends a
+    fifth of the tokens and pays about {more}% more.
+  </Fragment>
+</Figure>
+
+<style>
+  .svu { display: grid; gap: var(--space-5); }
+  .svu-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--space-1) var(--space-4); }
+  .svu-head b { font-size: 15px; font-weight: 600; }
+  .svu-cost { font: 400 12px var(--font-mono); color: var(--dim); font-variant-numeric: tabular-nums; }
+  .svu-accent { color: var(--accent); }
+  .svu-note { margin-top: 2px; font-size: 12.5px; color: var(--soft); }
+  .svu-bar { display: flex; gap: 6px; margin-top: var(--space-3); min-width: 120px; }
+  .svu-seg {
+    display: grid;
+    place-items: center;
+    min-width: 4px;
+    height: 30px;
+    flex-basis: 0;
+    border-radius: 3px;
+    font: 400 11px var(--font-mono);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .svu-seg[data-state="cached"] {
+    background: radial-gradient(circle, color-mix(in srgb, var(--fg) 42%, transparent) 0.8px, transparent 1.1px) 0 0 / 4px 4px, var(--fig-zone-solid);
+    box-shadow: inset 0 0 0 1px var(--fig-line-strong);
+  }
+  .svu-label { padding: 0 var(--space-1); background: var(--fig-zone-solid); }
+  .svu-seg[data-state="full"] { min-width: 2.6em; background: var(--fig-accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent); }
+</style>

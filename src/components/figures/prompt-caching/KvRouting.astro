@@ -1,0 +1,117 @@
+---
+import Figure from "../../figure/Figure.astro";
+import Diagram from "../../figure/diagram/Diagram.astro";
+import Node from "../../figure/diagram/Node.astro";
+import Wire from "../../figure/diagram/Wire.astro";
+import Zone from "../../figure/diagram/Zone.astro";
+import Legend from "../../figure/diagram/Legend.astro";
+
+const W12 = { x: 500, y: 16, w: 250, h: 96 };
+const W4 = { x: 500, y: 200, w: 250, h: 96 };
+const TIER = { x: 832, y: 200, w: 200, h: 96 };
+const kv = (n: typeof W12) => ({ x: n.x + 16, y: n.y + 52, w: n.w - 32, h: 28 });
+const k12 = kv(W12);
+const k4 = kv(W4);
+---
+
+<Figure
+  title="KV cache routing and offloading"
+  width="wide"
+  ground="dots"
+  scene="kv-routing"
+  status="A hit needs the request to reach memory that still holds its prefix. Routing finds that memory; offloading lets more workers reach it."
+>
+  <Diagram
+    id="kv-routing"
+    height={330}
+    label="A request with cache key abc goes to a router. With session affinity the router sends it to worker 12, whose GPU memory still holds the KV blocks for abc's prefix, so it hits. When worker 12 is busy the router sends the request to worker 4 instead, which has never seen the prefix: without offloading that is a miss and a full prefill. With KV offloading, worker 4 loads abc's blocks from a shared tier in CPU memory, local SSD or remote storage, and hits after the transfer."
+  >
+    <Node x={0} y={128} w={170} h={64} tag="Request" lines={["cache key: abc"]} mono k="req" />
+    <Node x={250} y={136} w={140} h={48} title="Router" center titleY={165} k="router" />
+    <Wire k="w-in" points={[[170, 160], [250, 160]]} />
+    <Wire k="w-12" points={[[390, 152], [445, 152], [445, 64], [W12.x, 64]]} label="affinity" labelAt={[445, 108]} />
+    <Wire k="w-4" points={[[390, 168], [445, 168], [445, 248], [W4.x, 248]]} label="rebalance" labelAt={[445, 212]} />
+
+    <Node {...W12} tag="Worker 12" tagRight="GPU memory" k="w12">
+      <rect class="d-fill-fine" x={k12.x} y={k12.y} width={k12.w} height={k12.h} rx="2" />
+      <text class="d-mono d-halo" x={k12.x + 12} y={k12.y + 18}  data-key="kv12">KV blocks for abc</text>
+    </Node>
+    <text class="d-tag" x={W12.x + W12.w + 16} y={68} data-key="hit12">Hit</text>
+
+    <Node {...W4} tag="Worker 4" tagRight="GPU memory" k="w4">
+      <rect class="d-fill-ground" x={k4.x} y={k4.y} width={k4.w} height={k4.h} rx="2" stroke-dasharray="3 3" data-key="kv4-empty" />
+      <g data-key="kv4">
+        <rect class="d-fill-fine" x={k4.x} y={k4.y} width={k4.w} height={k4.h} rx="2" />
+        <text class="d-mono d-halo" x={k4.x + 12} y={k4.y + 18}>KV blocks for abc, loaded</text>
+      </g>
+      <text class="d-mono d-dim" x={k4.x + 12} y={k4.y + 18} data-key="kv4-none" data-off>nothing for abc</text>
+    </Node>
+    <text class="d-tag d-accent" x={W4.x} y={W4.y + W4.h + 22} data-key="miss4" data-off>Miss: prefill the whole prefix again</text>
+    <text class="d-tag" x={W4.x} y={W4.y + W4.h + 22} data-key="hit4">Hit, after copying the blocks in</text>
+
+    <Zone {...TIER} tag="Offload tier" edge="dashed">
+      <text class="d-sub" x={TIER.x + 16} y={TIER.y + 52}>CPU memory, local SSD</text>
+      <text class="d-sub" x={TIER.x + 16} y={TIER.y + 70}>or remote storage,</text>
+      <text class="d-sub" x={TIER.x + 16} y={TIER.y + 88}>indexed by prefix</text>
+    </Zone>
+    <Wire k="w-tier" points={[[TIER.x, 248], [W4.x + W4.w, 248]]} label="load" />
+  </Diagram>
+  <Legend
+    items={[
+      { swatch: "cached", label: "KV blocks in memory" },
+      { swatch: "line", label: "request path" },
+    ]}
+  />
+  <Fragment slot="caption">
+    Sticky routing is cheap and fast when it works. KV offloading, as in
+    <a href="https://github.com/LMCache/LMCache">LMCache</a>, survives restarts and rebalancing, at the cost of moving
+    gigabytes of tensors and running a second storage system.
+  </Fragment>
+</Figure>
+
+<script>
+  import { defineScene } from "../../figure/motion";
+
+  defineScene("kv-routing", {
+    setup(s) {
+      s.hide(["hit12", "hit4", "kv4", "w-tier"]);
+      s.show("kv4-none");
+      s.state(["w-12", "w-4"], "idle");
+      s.caption("");
+    },
+    async play(s) {
+      const send = async (w: string) => {
+        s.state(w, "on");
+        await s.stream(w, { kind: "call", ms: 650 });
+      };
+      await s.wait(500);
+      s.caption("A request with cache key abc reaches the router, which reads the key and sends it to worker 12. Worker 12 still holds abc's KV blocks: a hit.", 1, 3);
+      await send("w-in");
+      s.state("w-12", null);
+      await send("w-12");
+      s.state("w12", "active");
+      s.show("hit12");
+      await s.wait(2600);
+      s.caption("Next turn, worker 12 is overloaded, so the router sends the request to worker 4, which has never seen this prefix. The prompt is byte-for-byte identical, and it still misses.", 2, 3);
+      s.state(["w-12", "w-in"], "idle");
+      s.state("w12", null);
+      s.state("w-in", null);
+      await send("w-in");
+      s.state("w-4", null);
+      await send("w-4");
+      s.state("w4", "hot");
+      s.show("miss4");
+      await s.wait(2800);
+      s.caption("With KV offloading, worker 4 copies abc's blocks in from a shared tier instead of recomputing them. That beats prefill, but gigabytes cross the network.", 3, 3);
+      s.hide("miss4");
+      s.state("w4", "active");
+      await s.draw("w-tier", 500);
+      s.state("w-tier", "on");
+      await s.stream("w-tier", { kind: "payload", n: 36, ms: 1400 });
+      s.hide("kv4-none");
+      s.show("kv4");
+      s.show("hit4");
+      s.state("w-tier", null);
+    },
+  });
+</script>

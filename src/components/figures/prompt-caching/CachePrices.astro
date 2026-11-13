@@ -1,0 +1,61 @@
+---
+import Figure from "../../figure/Figure.astro";
+import BarList from "../../figure/chart/BarList.astro";
+import VariantControl from "../../figure/chart/VariantControl.astro";
+
+/**
+ * Price of one input token relative to the model's base input price.
+ * Anthropic: https://platform.claude.com/docs/en/build-with-claude/prompt-caching
+ * OpenAI (GPT-5.6 and later): https://developers.openai.com/api/docs/guides/prompt-caching
+ */
+const PROVIDERS = [
+  {
+    id: "anthropic",
+    label: "Anthropic",
+    rows: [
+      { label: "Write, 1 hour", value: 2, note: "Pays to keep the prefix for an hour." },
+      { label: "Write, 5 minutes", value: 1.25, note: "The default retention." },
+      { label: "Base input", value: 1, note: "No cache entry to read, and none written." },
+      { label: "Cache read", value: 0.1, note: "0.05× on Claude Opus 5.5 and Sonnet 5.5; 0.025× on Fable 5.1 and 5.2.", tone: "accent" as const },
+    ],
+  },
+  {
+    id: "openai",
+    label: "OpenAI, GPT-5.6+",
+    rows: [
+      { label: "Write, 12 hours", value: 2.5, note: "Longer retention, set with prompt_cache_options.ttl." },
+      { label: "Write, 30 minutes", value: 1.25, note: "The default retention." },
+      { label: "Base input", value: 1, note: "No cache entry to read." },
+      { label: "Cache read", value: 0.1, note: "0.05× on some newer models. Earlier models charge no write premium.", tone: "accent" as const },
+    ],
+  },
+];
+const ticks = [0, 0.5, 1, 1.5, 2, 2.5];
+---
+
+<Figure title="Input token prices with prompt caching">
+  <VariantControl label="Provider" options={PROVIDERS.map((p) => ({ id: p.id, label: p.label }))} />
+  <div data-variants>
+    {PROVIDERS.map((p, i) => (
+      <div data-variant={p.id} hidden={i !== 0}>
+        <BarList
+          rows={p.rows.map((r) => ({
+            label: r.label,
+            value: r.value,
+            display: `${r.value}×`,
+            tone: r.tone,
+            tip: `${r.label.startsWith("Write") ? `Cache ${r.label.toLowerCase()}` : r.label} · ${p.label}\n${r.value}× the base input price\n${r.note}`,
+          }))}
+          max={2.5}
+          ticks={ticks}
+          minor={[0.5, 1.5, 2.5]}
+          tickFormat={(t) => `${t}×`}
+        />
+      </div>
+    ))}
+  </div>
+  <Fragment slot="caption">
+    Multiples of the model's base input price. A write costs extra because it reserves memory; a read costs a tenth
+    because the work is done. Hover or focus a bar for exceptions by model.
+  </Fragment>
+</Figure>

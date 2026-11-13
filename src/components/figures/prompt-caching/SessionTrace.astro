@@ -1,0 +1,92 @@
+---
+import Figure from "../../figure/Figure.astro";
+import Diagram from "../../figure/diagram/Diagram.astro";
+import Legend from "../../figure/diagram/Legend.astro";
+import { PRICE, REPORT, TRACE, num, usd } from "./data";
+
+const L = 52, R = 1032, T = 76, B = 310;
+const VMAX = 160_000;
+const pitch = (R - L) / TRACE.length;
+const bw = Math.round(pitch * 0.66);
+const x = (n: number) => L + (n - 1) * pitch + (pitch - bw) / 2;
+const h = (v: number) => (v / VMAX) * (B - T);
+const yt = [0, 50_000, 100_000, 150_000];
+const pct = (v: number) => `${(v * 100).toFixed(0)}%`;
+const stats = [
+  { k: "st-input", tag: "Input tokens", value: `${(REPORT.input / 1e6).toFixed(2)}M` },
+  { k: "st-hit", tag: "From cache", value: pct(REPORT.hit) },
+  { k: "st-cost", tag: "Session cost", value: usd(REPORT.cost) },
+  { k: "st-miss", tag: "Cost of 2 misses", value: `${usd(REPORT.extra)} · ${pct(REPORT.extraShare)}`, accent: true },
+];
+const tip = (t: (typeof TRACE)[number]) =>
+  [
+    `Turn ${t.n}${t.miss ? ` · ${t.miss.why}` : ""}`,
+    `${num(t.total)} input tokens, ${pct(t.read / t.total)} from cache`,
+    t.miss ? t.miss.detail : `${num(t.write)} new tokens written to the cache`,
+    `Input cost ${usd(t.cost, 3)}${t.miss ? ` (${usd(t.hitCost, 3)} on a hit)` : ""}`,
+  ].join("\n");
+---
+
+<Figure
+  title="Per-turn cache reads and misses in a 40-turn session"
+  width="wide"
+  ground="plain"
+>
+  <Diagram
+    id="session-trace"
+    height={B + 40}
+    label={`Input tokens for each of ${TRACE.length} turns of an agent session, split into tokens read from the cache and tokens processed at full price. Context grows from ${num(TRACE[0].total)} to ${num(TRACE[TRACE.length - 1].total)} tokens. Almost every turn is nearly all cached, except turn ${REPORT.misses[0].n} (${REPORT.misses[0].why}) and turn ${REPORT.misses[1].n} (${REPORT.misses[1].why}), which are processed entirely at full price. Over the session ${pct(REPORT.hit)} of ${(REPORT.input / 1e6).toFixed(2)} million input tokens came from the cache, the session cost ${usd(REPORT.cost)}, and the two misses added ${usd(REPORT.extra)}, ${pct(REPORT.extraShare)} of the total.`}
+  >
+    {stats.map((s, i) => (
+      <g data-key={s.k}>
+        <text class="d-tag" x={i * 250} y={16}>{s.tag}</text>
+        <text class:list={["d-say", s.accent && "d-accent"]} x={i * 250} y={44} style="font-variant-numeric: tabular-nums">{s.value}</text>
+      </g>
+    ))}
+
+    {yt.map((v) => (
+      <g>
+        <line class="d-rule" x1={L} x2={R} y1={B - h(v)} y2={B - h(v)} />
+        <text class="d-mono d-dim" x={L - 10} y={B - h(v) + 4} text-anchor="end">{v ? `${v / 1000}k` : 0}</text>
+      </g>
+    ))}
+    {TRACE.map((t) => (
+      <g data-key={`c${t.n}`} data-tip={tip(t)} tabindex="0" aria-label={tip(t).replaceAll("\n", ", ")} class="d-col">
+        <rect x={x(t.n) - 2} y={T} width={bw + 4} height={B - T} fill="transparent" />
+        <rect class="d-fill-fine" x={x(t.n)} y={B - h(t.read)} width={bw} height={h(t.read)} />
+        <rect class="d-col-full" x={x(t.n)} y={B - h(t.total)} width={bw} height={h(t.write)} />
+      </g>
+    ))}
+    {REPORT.misses.map((m) => {
+      const t = TRACE[m.n - 1];
+      return (
+        <g data-key={`m${m.n}`}>
+          <text class="d-tag d-accent" x={x(m.n) + bw / 2} y={B - h(t.total) - 22} text-anchor="middle">{m.why}</text>
+          <text class="d-mono d-dim" x={x(m.n) + bw / 2} y={B - h(t.total) - 8} text-anchor="middle">+{usd(m.extra)}</text>
+        </g>
+      );
+    })}
+    {TRACE.filter((t) => t.n === 1 || t.n % 5 === 0).map((t) => (
+      <text class="d-mono d-dim" x={x(t.n) + bw / 2} y={B + 18} text-anchor="middle">{t.n}</text>
+    ))}
+    <text class="d-sub" x={R} y={B + 36} text-anchor="end">turn</text>
+  </Diagram>
+  <Legend
+    items={[
+      { swatch: "cached", label: "read from the cache" },
+      { swatch: "full", label: "processed at full price (new tokens, written to the cache)" },
+    ]}
+  />
+  <Fragment slot="caption">
+    {pct(REPORT.hit)} of input tokens came from the cache, yet two misses cost {usd(REPORT.extra)},
+    {pct(REPORT.extraShare)} of the session. A simulated {TRACE.length}-turn coding session at ${PRICE.base} per million
+    input tokens with Anthropic's cache multipliers; hover or focus a turn for its tokens and cost.
+  </Fragment>
+</Figure>
+
+<style is:global>
+  .d-col-full { fill: var(--fig-accent-soft); stroke: var(--accent); stroke-width: 1; }
+  .d-col { outline: none; }
+  .d-col:hover .d-col-full, .d-col:focus-visible .d-col-full { fill: var(--accent); }
+  .d-col:focus-visible .d-fill-fine { stroke: var(--fg); }
+</style>
