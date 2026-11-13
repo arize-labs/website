@@ -12,20 +12,20 @@
 import { getEntries, getEntry } from "astro:content";
 import { getPosts, getTeam, readingMinutes, type Member, type Post } from "../content";
 import { site } from "../../site.config";
-import { OG_HEIGHT, OG_WIDTH, cardFormat, formatDuration, type Card } from "./render";
+import { OG_HEIGHT, OG_WIDTH, cardFormat, type Card } from "./render";
 
 const date = (d: Date) => d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
 
 /** Interior pages with a card of their own, keyed by path. Keep the copy in step with the page's title block. */
 const PAGES: Record<string, () => Promise<Omit<Card, "panel" | "alt"> & { art?: Card["panel"] }>> = {
-  blog: async () => ({ eyebrow: ["Blog"], title: "Blog", description: "News, writing and resources about the open-source projects." }),
-  team: async () => ({ eyebrow: ["Team"], title: "Team", description: "The engineers, researchers and designers behind Arize Labs." }),
+  blog: async () => ({ eyebrow: ["Blog"], title: "Blog", subtitle: "News, writing and resources about the open-source projects." }),
+  team: async () => ({ eyebrow: ["Team"], title: "Team", subtitle: "The engineers, researchers and designers behind Arize Labs." }),
   mission: async () => {
     const page = await getEntry("pages", "mission");
-    return { eyebrow: ["Mission"], title: page?.data.title ?? "Mission", description: page?.data.description };
+    return { eyebrow: ["Mission"], title: page?.data.title ?? "Mission", subtitle: page?.data.description };
   },
-  credits: async () => ({ eyebrow: ["Credits"], title: "Credits", description: "Work by others that this site is built with, and the licences it is used under." }),
-  brand: async () => ({ eyebrow: ["Brand"], title: "Brand guidelines", description: "The Arize Labs identity: a mark and a two-line wordmark." }),
+  credits: async () => ({ eyebrow: ["Credits"], title: "Credits", subtitle: "Work by others that this site is built with, and the licences it is used under." }),
+  brand: async () => ({ eyebrow: ["Brand"], title: "Brand guidelines", subtitle: "The Arize Labs identity: a mark and a two-line wordmark." }),
 };
 
 const SITE_CARD = "site";
@@ -91,11 +91,14 @@ function postAlt(post: Post) {
 async function postCard(post: Post): Promise<Card> {
   const { title, pubDate, authors, video } = post.data;
   const members = await getEntries(authors);
-  const meta = video ? [`${formatDuration(video.duration)} video`] : [`${readingMinutes(post)} min read`];
+  const names = members.map((m) => m.data.name);
+  const byline = names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0];
+  // A video's running time is on its poster, so the byline leaves it out.
+  const length = `${readingMinutes(post)} min read`;
   return {
     eyebrow: video ? ["Video", date(pubDate)] : ["Blog", date(pubDate)],
     title,
-    byline: { people: members.map((m) => ({ name: m.data.name, avatar: m.data.avatar })), meta },
+    subtitle: video ? byline : `${byline} · ${length}`,
     panel: postPanel(post),
     alt: postAlt(post),
   };
@@ -108,7 +111,7 @@ export async function getCards(): Promise<{ file: string; card: Card }[]> {
   const [headline, ...rest] = site.description.split(/(?<=\.)\s+/);
   cards.push({
     key: SITE_CARD,
-    card: { eyebrow: ["Open tooling", "Evals", "Research"], title: headline, description: rest.join(" "), panel: { art: "mark", seed: "site" }, alt: site.name },
+    card: { eyebrow: ["Open tooling", "Evals", "Research"], title: headline, subtitle: rest.join(" "), panel: { art: "mark", seed: "site" }, alt: site.name },
   });
 
   for (const [key, load] of Object.entries(PAGES)) {
@@ -124,7 +127,7 @@ export async function getCards(): Promise<{ file: string; card: Card }[]> {
     const { name, role } = member.data;
     cards.push({
       key: `team/${member.id}`,
-      card: { eyebrow: ["Team"], title: name, description: role, panel: memberPanel(member), alt: `${name}, ${role} at ${site.name}` },
+      card: { eyebrow: ["Team"], title: name, subtitle: role, panel: memberPanel(member), alt: `${name}, ${role} at ${site.name}` },
     });
   }
   return cards.map(({ key, card }) => ({ file: cardFile(key, cardFormat(card)), card }));

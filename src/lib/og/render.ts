@@ -1,22 +1,17 @@
 /**
  * Social cards: the 1200 × 630 images that link previews show (og:image,
- * twitter:image). Drawn at build time, one per page, by /og/[...card].png.
+ * twitter:image). Drawn at build time, one per page, by /og/[...card].ts.
  *
- * Every card has the same two halves, so a feed of our links reads as one
- * series:
- *  - Text, on the left: the lockup, an eyebrow in mono caps, the title, then
- *    a description or a byline. The title is bold and as large as fits, and
- *    nothing is smaller than 20px, so it reads in a phone's message preview,
- *    where the card is shown at about half size. Previews print the domain
- *    themselves, so the card doesn't.
- *  - A panel, on the right, on the site's dot ground: the post's halftone
- *    cover art, or a framed picture (a cover image, a video poster, a
- *    headshot) with registration crosses on its corners. Video posters get a
- *    play button and the running time, so a video reads as one before anyone
- *    clicks.
- *
- * The card is always the light theme: ink on paper. Feeds are both light
- * and dark, and paper stands out in either.
+ * A card is a poster with one job: make the title readable at the size a
+ * phone shows it, about half size. So it carries little, and big:
+ *  - Text, on the left: an eyebrow in mono caps at the top, the lockup at the
+ *    bottom, and between them the title, bold and as large as fits, with one
+ *    line under it (the byline, or a description). Nothing is under 20px.
+ *    Previews print the domain themselves, so the card doesn't.
+ *  - Art, on the right: the post's halftone cover art, printed large and
+ *    bleeding off the edge, its dot ground fading into the card so there is
+ *    no box; or a picture (cover image, video poster, headshot) run full
+ *    bleed. Video posters get a play button and the running time.
  *
  * Satori lays out the text (with the site's typefaces, so no fonts are
  * needed at render time) and sharp rasterizes it.
@@ -33,23 +28,22 @@ import { art as brandArt } from "../brand";
 export const OG_WIDTH = 1200;
 export const OG_HEIGHT = 630;
 
-/** The card's colours: the light theme in tokens.css. */
-const C = {
-  ink: "#231f20",
-  paper: "#f6f5f2",
-  surface: "#ffffff",
-  rule: "#d8d5ce",
-  dim: "#6f6b66",
-  soft: "#4b4745",
-  accent: "#ff5a1f",
-};
+/**
+ * Card colours: the dark theme in tokens.css. Paper type and halftone on ink
+ * is the boldest thing the brand has, and it stands out in feeds, which are
+ * mostly light.
+ */
+const T = { bg: "#161314", fg: "#f6f5f2", soft: "#bdb8b0", dim: "#9b958d", dot: 0.2 };
+const ACCENT = "#ff5a1f";
 
 // Layout, in card pixels.
-const PANEL_X = 680;
-const PANEL_W = OG_WIDTH - PANEL_X;
-const PAD_X = 64;
-const PAD_Y = 52;
-const TEXT_W = PANEL_X - PAD_X - 40;
+const PAD = 72;
+/** Where the art starts; its first FADE pixels dissolve into the ground. */
+const ART_X = 600;
+const FADE = 140;
+/** Where a full-bleed picture starts. */
+const PICTURE_X = 700;
+const TEXT_W = 548;
 
 export type CardPicture = {
   image: ImageMetadata;
@@ -63,11 +57,9 @@ export interface Card {
   /** Mono caps parts, joined with a middle dot. */
   eyebrow: string[];
   title: string;
-  /** Shown under the title when there is no byline. */
-  description?: string;
-  /** The people behind it, with their headshots, and facts like the reading time. */
-  byline?: { people: { name: string; avatar?: ImageMetadata }[]; meta: string[] };
-  /** Generated cover art, or a picture to frame. */
+  /** One line under the title: the byline, or a description. */
+  subtitle?: string;
+  /** Generated cover art, or a picture. */
   panel: { art: ArtKind | undefined; seed: string } | CardPicture;
   /** Accessible description of the image, for og:image:alt. */
   alt: string;
@@ -77,14 +69,15 @@ export interface Card {
 // Assets
 
 const root = process.cwd();
-let fonts: Promise<{ name: string; data: Buffer; weight: 500 | 600 | 700; style: "normal" }[]> | undefined;
+type Font = { name: string; data: Buffer; weight: 600 | 700; style: "normal" };
+let fonts: Promise<Font[]> | undefined;
 function loadFonts() {
-  const file = (pkg: string, name: string) => readFile(join(root, "node_modules/@fontsource", pkg, "files", name));
+  const file = (pkg: string, name: string, family: string, weight: Font["weight"]) =>
+    readFile(join(root, "node_modules/@fontsource", pkg, "files", name)).then((data): Font => ({ name: family, data, weight, style: "normal" }));
   fonts ??= Promise.all([
-    file("urbanist", "urbanist-latin-700-normal.woff").then((data) => ({ name: "Urbanist", data, weight: 700 as const, style: "normal" as const })),
-    file("urbanist", "urbanist-latin-500-normal.woff").then((data) => ({ name: "Urbanist", data, weight: 500 as const, style: "normal" as const })),
-    file("urbanist", "urbanist-latin-600-normal.woff").then((data) => ({ name: "Urbanist", data, weight: 600 as const, style: "normal" as const })),
-    file("geist-mono", "geist-mono-latin-600-normal.woff").then((data) => ({ name: "Geist Mono", data, weight: 600 as const, style: "normal" as const })),
+    file("urbanist", "urbanist-latin-700-normal.woff", "Urbanist", 700),
+    file("urbanist", "urbanist-latin-600-normal.woff", "Urbanist", 600),
+    file("geist-mono", "geist-mono-latin-600-normal.woff", "Geist Mono", 600),
   ]);
   return fonts;
 }
@@ -102,91 +95,98 @@ function imagePath(image: ImageMetadata): string {
   throw new Error(`Social card: can't find the file for image ${image.src}`);
 }
 
-const dataUri = (png: Buffer, type = "image/png") => `data:${type};base64,${png.toString("base64")}`;
+const dataUri = (buf: Buffer, type = "image/png") => `data:${type};base64,${buf.toString("base64")}`;
+const svgDoc = (w: number, h: number, body: string) => `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">${body}</svg>`;
 
-// ---------------------------------------------------------------------------
-// The panel (right half), rasterized by sharp
-
-/** The site's faint dot ground, on the cover art's 45° screen. */
-function ground(width: number, height: number, pitch = 5.8) {
-  const r = 1;
-  return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
-    `<defs><pattern id="g" width="${2 * pitch}" height="${2 * pitch}" patternUnits="userSpaceOnUse">` +
-    `<circle cx="${pitch / 2}" cy="${pitch / 2}" r="${r}" fill="${C.ink}" fill-opacity=".16"/>` +
-    `<circle cx="${1.5 * pitch}" cy="${1.5 * pitch}" r="${r}" fill="${C.ink}" fill-opacity=".16"/>` +
-    `</pattern></defs><rect width="100%" height="100%" fill="${C.paper}"/><rect width="100%" height="100%" fill="url(#g)"/></svg>`
-  );
-}
-
-/** The cover art, reframed to the panel: the subject fills about three quarters of its width. */
-async function artPanel(seed: string, kind: ArtKind | undefined): Promise<Buffer> {
-  const { subject } = ART_BOX;
-  const scale = (0.76 * PANEL_W) / (subject.x1 - subject.x0);
-  const w = PANEL_W / scale, h = OG_HEIGHT / scale;
-  const cx = (subject.x0 + subject.x1) / 2, cy = (subject.y0 + subject.y1) / 2;
-  const view: ViewBox = [cx - w / 2, cy - h / 2, w, h];
-  const svg = coverArt(seed, kind, view)
-    .replace("<svg ", `<svg xmlns="http://www.w3.org/2000/svg" width="${PANEL_W}" height="${OG_HEIGHT}" `)
-    .replaceAll("var(--fg)", C.ink)
-    .replaceAll("var(--bg)", C.paper)
-    .replaceAll("var(--accent)", C.accent);
-  return sharp(Buffer.from(svg)).flatten({ background: C.paper }).png().toBuffer();
-}
-
-const cross = (x: number, y: number, arm = 7) =>
-  `<path d="M${x - arm} ${y + 0.5}h${2 * arm + 1}M${x + 0.5} ${y - arm}v${2 * arm + 1}" stroke="${C.ink}" stroke-opacity=".45"/>`;
-
-function formatDuration(seconds: number) {
+export function formatDuration(seconds: number) {
   const h = Math.floor(seconds / 3600), m = Math.floor((seconds % 3600) / 60), s = seconds % 60;
   const ss = String(s).padStart(2, "0");
   return h ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
 }
 
+// ---------------------------------------------------------------------------
+// Art and pictures, rasterized by sharp
+
 /**
- * A picture framed on the dot ground. Wide pictures are cropped to 8:5, as
- * cover images are on the site's post cards, and tall ones to 4:5, as
- * headshots are; anything in between keeps its own shape.
+ * The cover art, printed large: the subject spans about 80% of the art's
+ * width, and the left edge fades to transparent so the dots dissolve into
+ * the card instead of stopping at a box.
  */
-async function picturePanel({ image, grayscale = false, video }: CardPicture): Promise<{ png: Buffer; frame: { x: number; y: number; w: number; h: number } }> {
-  const maxW = PANEL_W - 2 * 32, maxH = OG_HEIGHT - 2 * 56;
-  const aspect = Math.min(8 / 5, Math.max(4 / 5, image.width / image.height));
-  const w = Math.round(Math.min(maxW, maxH * aspect)), h = Math.round(w / aspect);
-  const x = Math.round((PANEL_W - w) / 2), y = Math.round((OG_HEIGHT - h) / 2);
-
-  let picture = sharp(await readFile(imagePath(image))).rotate().resize(w, h, { fit: "cover" });
-  if (grayscale) picture = picture.grayscale();
-  const pictureBuf = await picture.png().toBuffer();
-
-  // Drawn over the picture: its 1px frame, registration crosses on the
-  // corners, and for video a play button and the running time.
-  let overlay = `<rect x="${x - 0.5}" y="${y - 0.5}" width="${w + 1}" height="${h + 1}" fill="none" stroke="${C.rule}"/>`;
-  overlay += cross(x - 1, y - 1) + cross(x + w, y - 1) + cross(x - 1, y + h) + cross(x + w, y + h);
-  if (video !== undefined) {
-    const cx = x + w / 2, cy = y + h / 2, r = Math.round(Math.min(44, h / 5));
-    overlay +=
-      `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${C.accent}"/>` +
-      // A triangle nudged right, so it looks centred in the circle.
-      `<path d="M${cx - r * 0.3} ${cy - r * 0.42}L${cx + r * 0.46} ${cy}L${cx - r * 0.3} ${cy + r * 0.42}Z" fill="${C.paper}" stroke="${C.paper}" stroke-width="${r * 0.08}" stroke-linejoin="round"/>`;
-  }
-  const png = await sharp(Buffer.from(ground(PANEL_W, OG_HEIGHT)))
-    .composite([
-      { input: pictureBuf, left: x, top: y },
-      { input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${PANEL_W}" height="${OG_HEIGHT}">${overlay}</svg>`), left: 0, top: 0 },
-    ])
+async function artLayer(seed: string, kind: ArtKind | undefined): Promise<Buffer> {
+  const width = OG_WIDTH - ART_X;
+  const { subject } = ART_BOX;
+  // The subject sits in the art that's past the fade.
+  const scale = (0.82 * (width - FADE / 2)) / (subject.x1 - subject.x0);
+  const w = width / scale, h = OG_HEIGHT / scale;
+  const cx = (subject.x0 + subject.x1) / 2 - FADE / 4 / scale, cy = (subject.y0 + subject.y1) / 2;
+  const view: ViewBox = [cx - w / 2, cy - h / 2, w, h];
+  const svg = coverArt(seed, kind, view)
+    .replace("<svg ", `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${OG_HEIGHT}" `)
+    .replace(/fill-opacity:\.16/, `fill-opacity:${T.dot}`)
+    .replaceAll("var(--fg)", T.fg)
+    .replaceAll("var(--bg)", T.bg)
+    .replaceAll("var(--accent)", ACCENT);
+  const fade = svgDoc(
+    width,
+    OG_HEIGHT,
+    `<defs><linearGradient id="f" x1="0" x2="${FADE}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#f)"/>`,
+  );
+  return sharp(Buffer.from(svg))
+    .ensureAlpha()
+    .composite([{ input: Buffer.from(fade), blend: "dest-in" }])
     .png()
     .toBuffer();
-  return { png, frame: { x, y, w, h } };
 }
 
-async function avatar(image: ImageMetadata, size: number) {
-  const png = await sharp(await readFile(imagePath(image)))
-    .rotate()
-    .resize(size * 2, size * 2, { fit: "cover", position: "attention" })
-    .grayscale()
+/** The dot ground on its own, fading in from the left like the art's. */
+function ground(width: number) {
+  const p = 6.4;
+  return svgDoc(
+    width,
+    OG_HEIGHT,
+    `<defs><pattern id="g" width="${2 * p}" height="${2 * p}" patternUnits="userSpaceOnUse">` +
+      `<circle cx="${p / 2}" cy="${p / 2}" r="1.1" fill="${T.fg}" fill-opacity="${T.dot}"/><circle cx="${1.5 * p}" cy="${1.5 * p}" r="1.1" fill="${T.fg}" fill-opacity="${T.dot}"/></pattern>` +
+      `<linearGradient id="f" x1="0" x2="${FADE}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff"/></linearGradient>` +
+      `<mask id="m"><rect width="100%" height="100%" fill="url(#f)"/></mask></defs>` +
+      `<rect width="100%" height="100%" fill="url(#g)" mask="url(#m)"/>`,
+  );
+}
+
+/**
+ * A cover image, framed on the dot ground like a figure: covers are often
+ * screenshots, which don't survive a crop. Wide images are cropped to 8:5 at
+ * most, as on the site's post cards.
+ */
+async function framedLayer({ image }: CardPicture): Promise<Buffer> {
+  const width = OG_WIDTH - ART_X;
+  const aspect = Math.min(8 / 5, Math.max(4 / 5, image.width / image.height));
+  const maxW = width - FADE / 2 - 56, maxH = OG_HEIGHT - 2 * PAD;
+  const w = Math.round(Math.min(maxW, maxH * aspect)), h = Math.round(w / aspect);
+  const x = Math.round(FADE / 2 + (width - FADE / 2 - w) / 2), y = Math.round((OG_HEIGHT - h) / 2);
+  const picture = await sharp(await readFile(imagePath(image))).rotate().resize(w, h, { fit: "cover" }).png().toBuffer();
+  const frame = svgDoc(width, OG_HEIGHT, `<rect x="${x - 0.5}" y="${y - 0.5}" width="${w + 1}" height="${h + 1}" fill="none" stroke="${T.fg}" stroke-opacity=".22"/>`);
+  return sharp(Buffer.from(ground(width)))
+    .composite([{ input: picture, left: x, top: y }, { input: Buffer.from(frame) }])
     .png()
     .toBuffer();
-  return dataUri(png);
+}
+
+/** A video poster or a headshot, run full bleed on the right; posters get a play button. */
+async function bleedLayer({ image, grayscale = false, video }: CardPicture): Promise<Buffer> {
+  const width = OG_WIDTH - PICTURE_X;
+  let picture = sharp(await readFile(imagePath(image))).rotate().resize(width, OG_HEIGHT, { fit: "cover", position: "attention" });
+  if (grayscale) picture = picture.grayscale();
+  if (video === undefined) return picture.jpeg({ quality: 92 }).toBuffer();
+
+  const cx = width / 2, cy = OG_HEIGHT / 2, r = 58;
+  const play =
+    `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${ACCENT}"/>` +
+    // A triangle nudged right, so it looks centred in the circle.
+    `<path d="M${cx - r * 0.28} ${cy - r * 0.4}L${cx + r * 0.44} ${cy}L${cx - r * 0.28} ${cy + r * 0.4}Z" fill="#fff" stroke="#fff" stroke-width="${r * 0.1}" stroke-linejoin="round"/>`;
+  return picture
+    .composite([{ input: Buffer.from(svgDoc(width, OG_HEIGHT, play)) }])
+    .jpeg({ quality: 92 })
+    .toBuffer();
 }
 
 // ---------------------------------------------------------------------------
@@ -200,30 +200,29 @@ function el(type: string, props: Record<string, unknown>, ...children: Child[]):
 }
 const div = (style: Record<string, unknown>, ...children: Child[]) => el("div", { style: { display: "flex", ...style } }, ...children);
 
-const mono = (size: number, color = C.dim) => ({
+const mono = (size: number, color: string) => ({
   fontFamily: "Geist Mono",
   fontWeight: 600,
   fontSize: size,
-  letterSpacing: size * 0.06,
+  letterSpacing: size * 0.08,
   textTransform: "uppercase" as const,
   color,
 });
 
-/** Rough advance widths for Urbanist 600, in ems, by character class. */
+/** Rough advance widths for Urbanist 700, in ems, by character class. */
 function charWidth(c: string) {
   if (c === " ") return 0.24;
-  if (/[iljtfr.,:;'’!|()\-]/.test(c)) return 0.3;
-  if (/[mwMW]/.test(c)) return 0.82;
-  if (/[A-Z0-9]/.test(c)) return 0.64;
-  return 0.53;
+  if (/[iljtfr.,:;'’!|()\-]/.test(c)) return 0.31;
+  if (/[mwMW]/.test(c)) return 0.84;
+  if (/[A-Z0-9]/.test(c)) return 0.66;
+  return 0.55;
 }
 
 /** How many lines `text` takes at `size`, wrapping word by word (and after hyphens) as Satori does. */
-function lineCount(text: string, size: number, width: number) {
-  const words = text.split(/(?<=-)|\s+/);
+function lineCount(text: string, size: number, width: number, tracking: number) {
   let lines = 1, line = 0;
-  for (const word of words) {
-    const w = [...word].reduce((sum, c) => sum + charWidth(c), 0) * size;
+  for (const word of text.split(/(?<=-)|\s+/)) {
+    const w = [...word].reduce((sum, c) => sum + charWidth(c) + tracking, 0) * size;
     const gap = line > 0 ? charWidth(" ") * size : 0;
     if (line > 0 && line + gap + w > width) {
       lines++;
@@ -233,98 +232,56 @@ function lineCount(text: string, size: number, width: number) {
   return lines;
 }
 
+const TRACKING = -0.03;
+
 /**
  * The largest title size that fits in three lines (four for long titles),
  * with a little room to spare, as the widths are estimates. Satori's line
  * clamp is the backstop.
  */
-function titleSize(title: string): { size: number; lines: number } {
-  for (const size of [80, 72, 64, 58]) if (lineCount(title, size, TEXT_W * 0.92) <= 3) return { size, lines: 3 };
-  return { size: 54, lines: 4 };
+function titleSize(title: string, width: number): { size: number; lines: number } {
+  for (const size of [92, 84, 76, 68, 62]) if (lineCount(title, size, width * 0.94, TRACKING) <= 3) return { size, lines: 3 };
+  return { size: 56, lines: 4 };
 }
 
 export async function renderCard(card: Card): Promise<Buffer> {
   const picture = "image" in card.panel ? card.panel : undefined;
-  const panel = "image" in card.panel ? await picturePanel(card.panel) : { png: await artPanel(card.panel.seed, card.panel.art), frame: undefined };
+  const bleed = !!picture && (picture.video !== undefined || !!picture.grayscale);
+  const layer = !picture
+    ? await artLayer((card.panel as { seed: string }).seed, (card.panel as { art: ArtKind | undefined }).art)
+    : bleed
+      ? await bleedLayer(picture)
+      : await framedLayer(picture);
+  const layerX = bleed ? PICTURE_X : ART_X;
+  const textW = bleed ? PICTURE_X - PAD - 56 : TEXT_W;
 
   const lockup = brandArt.lockup;
-  const lockupH = 52;
-  const lockupSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${lockup.viewBox.x} ${lockup.viewBox.y} ${lockup.viewBox.w} ${lockup.viewBox.h}">${lockup.body.replaceAll("#000000", C.ink)}</svg>`;
+  const lockupH = 46;
+  const lockupSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${lockup.viewBox.x} ${lockup.viewBox.y} ${lockup.viewBox.w} ${lockup.viewBox.h}">${lockup.body.replaceAll("#000000", T.fg)}</svg>`;
 
-  const { size, lines } = titleSize(card.title);
-  const avatarSize = 60;
-  const people = card.byline?.people ?? [];
-  const avatars = await Promise.all(people.filter((p) => p.avatar).map((p) => avatar(p.avatar!, avatarSize)));
-
-  const byline =
-    card.byline &&
-    div(
-      { alignItems: "center", gap: 18 },
-      avatars.length > 0 &&
-        div(
-          { paddingLeft: 10 },
-          ...avatars.map((src) =>
-            el("img", { src, width: avatarSize, height: avatarSize, style: { marginLeft: -10, borderRadius: avatarSize, border: `2px solid ${C.paper}` } }),
-          ),
-        ),
-      div(
-        { flexDirection: "column", gap: 6 },
-        div({ ...mono(23, C.ink) }, people.map((p) => p.name).join(", ")),
-        card.byline.meta.length > 0 && div({ ...mono(20, C.soft) }, card.byline.meta.join("  ·  ")),
-      ),
-    );
+  const { size, lines } = titleSize(card.title, textW);
 
   const timestamp =
-    picture?.video !== undefined && panel.frame
-      ? div(
-          {
-            position: "absolute",
-            right: PANEL_W - (panel.frame.x + panel.frame.w) + 12,
-            bottom: OG_HEIGHT - (panel.frame.y + panel.frame.h) + 12,
-            padding: "5px 9px 4px",
-            background: C.ink,
-            ...mono(20, C.paper),
-          },
-          formatDuration(picture.video),
-        )
-      : null;
+    picture?.video !== undefined &&
+    div({ position: "absolute", right: 28, bottom: 28, padding: "7px 12px 6px", background: "rgba(22,19,20,.86)", borderRadius: 6, ...mono(22, "#fff") }, formatDuration(picture.video));
 
   const tree = div(
-    { width: OG_WIDTH, height: OG_HEIGHT, background: C.paper, fontFamily: "Urbanist", color: C.ink },
-    // Text
+    { width: OG_WIDTH, height: OG_HEIGHT, background: T.bg, fontFamily: "Urbanist", color: T.fg },
+    div(
+      { position: "absolute", left: layerX, top: 0, width: OG_WIDTH - layerX, height: OG_HEIGHT },
+      el("img", { src: dataUri(layer, bleed ? "image/jpeg" : "image/png"), width: OG_WIDTH - layerX, height: OG_HEIGHT }),
+      timestamp,
+    ),
     div(
       // Satori boxes are content-box: the padding sits outside width and height.
-      { flexDirection: "column", width: TEXT_W, height: OG_HEIGHT - 2 * PAD_Y, padding: `${PAD_Y}px ${PANEL_X - PAD_X - TEXT_W}px ${PAD_Y}px ${PAD_X}px` },
+      { position: "absolute", left: 0, top: 0, flexDirection: "column", width: textW, height: OG_HEIGHT - 2 * PAD, padding: `${PAD}px 0 ${PAD}px ${PAD}px` },
+      div({ ...mono(22, T.dim) }, card.eyebrow.join(" · ")),
       div(
-        { alignItems: "center", justifyContent: "space-between" },
-        el("img", { src: dataUri(Buffer.from(lockupSvg), "image/svg+xml"), height: lockupH, width: Math.round((lockupH * lockup.viewBox.w) / lockup.viewBox.h) }),
+        { flexDirection: "column", flexGrow: 1, justifyContent: "center", gap: 24 },
+        div({ fontSize: size, fontWeight: 700, lineHeight: 1, letterSpacing: size * TRACKING, lineClamp: lines, display: "block" }, card.title),
+        card.subtitle && div({ fontSize: 30, fontWeight: 600, lineHeight: 1.3, color: T.soft, lineClamp: 3, display: "block" }, card.subtitle),
       ),
-      div(
-        { flexDirection: "column", flexGrow: 1, justifyContent: "center", gap: 20, paddingTop: 8 },
-        div({ ...mono(22, C.soft), gap: 0 }, card.eyebrow.join("  ·  ")),
-        div(
-          {
-            fontSize: size,
-            fontWeight: 700,
-            lineHeight: 1.02,
-            letterSpacing: size * -0.025,
-            maxWidth: TEXT_W,
-            lineClamp: lines,
-            display: "block",
-          },
-          card.title,
-        ),
-        card.description &&
-          !card.byline &&
-          div({ fontSize: 32, fontWeight: 600, lineHeight: 1.3, color: C.soft, maxWidth: TEXT_W, lineClamp: 3, display: "block" }, card.description),
-      ),
-      byline,
-    ),
-    // Panel
-    div(
-      { position: "absolute", left: PANEL_X, top: 0, width: PANEL_W, height: OG_HEIGHT, borderLeft: `1px solid ${C.rule}` },
-      el("img", { src: dataUri(panel.png), width: PANEL_W, height: OG_HEIGHT }),
-      timestamp,
+      el("img", { src: dataUri(Buffer.from(lockupSvg), "image/svg+xml"), height: lockupH, width: Math.round((lockupH * lockup.viewBox.w) / lockup.viewBox.h) }),
     ),
   );
 
@@ -339,5 +296,3 @@ export async function renderCard(card: Card): Promise<Buffer> {
  * well under the 300 KB that some previews (WhatsApp) start to refuse.
  */
 export const cardFormat = (card: Pick<Card, "panel">): "png" | "jpg" => ("image" in card.panel ? "jpg" : "png");
-
-export { formatDuration };
