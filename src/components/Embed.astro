@@ -11,15 +11,17 @@ export interface Props {
   title: string;
   /** Frame height in CSS pixels; the figure scrolls inside it if taller. */
   height?: number;
+  /** Optional caption shown under the frame. */
+  caption?: string;
 }
-const { src, title, height = 560 } = Astro.props;
+const { src, title, height = 560, caption } = Astro.props;
 ---
 
-<figure class="embed">
+<figure>
   <iframe src={src} title={title} loading="lazy" style={`height: ${height}px`} referrerpolicy="no-referrer"></iframe>
+  {caption && <figcaption>{caption}</figcaption>}
 </figure>
 
 <style>
-  .embed { margin-inline: 0; border: 1px solid var(--rule); background: var(--surface); }
-  iframe { display: block; width: 100%; border: 0; }
+  iframe { display: block; width: 100%; border: 1px solid var(--rule); background: var(--surface); }
 </style>

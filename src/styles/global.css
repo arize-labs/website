@@ -101,6 +101,8 @@ a { color: inherit; }
 .prose :not(pre) > code { padding: 0.1em 0.3em; background: var(--placeholder); }
 .prose pre { padding: var(--space-4); overflow-x: auto; font-size: var(--text-small); line-height: 1.5; border: 1px solid var(--rule); }
 .prose img { border: 1px solid var(--rule); }
+.prose figure img { width: 100%; }
+.prose figcaption { margin-top: var(--space-2); font-size: var(--text-small); line-height: 1.5; color: var(--soft); }
 /* Code blocks: the Pierre theme's dark colors, with the site's dark theme
    (an explicit choice, or the system preference when none is set). */
 :root[data-theme="dark"] .astro-code,
