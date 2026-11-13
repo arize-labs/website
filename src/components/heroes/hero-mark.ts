@@ -60,30 +60,11 @@ export function markDistance(p: Vec) {
 
 const vec2s = (pts: Vec[]) => pts.map(([x, y]) => `vec2(${x.toFixed(3)}, ${y.toFixed(3)})`).join(", ");
 
-const VERTEX = /* glsl */ `#version 300 es
-in vec2 aPos;
-void main() { gl_Position = vec4(aPos, 0.0, 1.0); }
-`;
-
-const FRAGMENT = /* glsl */ `#version 300 es
-precision highp float;
-uniform vec2 uRes;
-uniform float uScale;
-uniform float uDpr;
-uniform float uCell;
-uniform float uTime;
-uniform float uIntro;
-uniform vec2 uGlow;
-uniform float uGlowBoost;
-uniform float uPaper;
-out vec4 outColor;
-
+/** The mark's signed distance in GLSL, shared with hero-photo.ts. */
+export const MARK_GLSL = /* glsl */ `
 const vec2 CENTER = vec2(${CENTER[0].toFixed(3)}, ${CENTER[1].toFixed(3)});
 const vec2 OUTER[6] = vec2[6](${vec2s(OUTER)});
 const vec2 HOLE[6] = vec2[6](${vec2s(HOLE)});
-const vec3 INK = vec3(0.039, 0.035, 0.031);
-const vec3 CREAM = vec3(0.937, 0.914, 0.863);
-const vec3 WHITE = vec3(1.0, 0.985, 0.955);
 
 float sdPolygon(vec2 p, vec2 v[6]) {
   float d = dot(p - v[0], p - v[0]);
@@ -104,6 +85,58 @@ float sdMark(vec2 p) {
   float glass = max(sdPolygon(p, OUTER) - ${OUTER_R.toFixed(1)}, -(sdPolygon(p, HOLE) - ${HOLE_R.toFixed(1)}));
   return min(glass, length(p) - ${DOT_R.toFixed(1)});
 }
+`;
+
+/**
+ * A 45° screen's dots repeat every cell/√2 px along each axis. Snapping that
+ * to whole pixels renders every dot the same, with no beat (streaks).
+ */
+const snapCell = (cell: number) => Math.max(2, Math.round(cell / Math.SQRT2)) * Math.SQRT2;
+
+/**
+ * The band in device pixels, origin bottom-left. Every hero layer prints its
+ * screen in this frame, so the dots align.
+ */
+export function bandFrame(band: { clientWidth: number; clientHeight: number }) {
+  const w = band.clientWidth, h = band.clientHeight;
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const W = Math.round(w * dpr), H = Math.round(h * dpr);
+  return {
+    w, h, dpr, W, H,
+    /** Device px per mark unit. */
+    scale: Math.min((w * FIT_W) / VIEW.w, (h * FIT_H) / VIEW.h) * dpr,
+    /** The mark's centre in the frame. */
+    mark: [W / 2, H * (1 - MARK_Y)] as [number, number],
+    /** Halftone cells (open, and behind the glass), in device px. */
+    cell: snapCell((w < 640 ? 3.4 : 4.4) * dpr),
+    cellFine: snapCell((w < 640 ? 3.4 : 4.4) * dpr * 0.75),
+  };
+}
+
+const VERTEX = /* glsl */ `#version 300 es
+in vec2 aPos;
+void main() { gl_Position = vec4(aPos, 0.0, 1.0); }
+`;
+
+const FRAGMENT = /* glsl */ `#version 300 es
+precision highp float;
+uniform vec2 uOrigin;
+uniform vec2 uMark;
+uniform float uScale;
+uniform float uDpr;
+uniform float uCell;
+uniform float uCellFine;
+uniform float uTime;
+uniform float uIntro;
+uniform vec2 uGlow;
+uniform float uGlowBoost;
+uniform float uPaper;
+out vec4 outColor;
+
+${MARK_GLSL}
+const vec3 INK = vec3(0.039, 0.035, 0.031);
+const vec3 CREAM = vec3(0.937, 0.914, 0.863);
+const vec3 WHITE = vec3(1.0, 0.985, 0.955);
 
 float hash(vec2 p) {
   vec3 q = fract(vec3(p.xyx) * 0.1031);
@@ -121,9 +154,10 @@ float noise(vec2 p) {
 void over(inout vec4 acc, vec3 c, float a) { acc = vec4(c * a, a) + acc * (1.0 - a); }
 
 void main() {
-  vec2 frag = gl_FragCoord.xy;
-  // Mark coordinates (y down, like the SVG); the canvas is centred on the mark.
-  vec2 p = vec2(frag.x - uRes.x * 0.5, uRes.y * 0.5 - frag.y) / uScale + CENTER;
+  // In the band frame, so the screen aligns with the art's.
+  vec2 frag = gl_FragCoord.xy + uOrigin;
+  // Mark coordinates (y down, like the SVG).
+  vec2 p = vec2(frag.x - uMark.x, uMark.y - frag.y) / uScale + CENTER;
 
   float dMat = sdMark(p);
   float dPx = dMat * uScale;
@@ -144,7 +178,7 @@ void main() {
   float tone = clamp(level * uIntro + glow * 1.1, 0.0, 1.0);
   tone += (hash(floor(frag / uDpr)) - 0.5) * 0.06 * smoothstep(0.02, 0.2, tone);
 
-  float cell = uCell * mix(1.0, 0.75, inside);
+  float cell = mix(uCell, uCellFine, inside);
   vec2 r = mat2(0.7071, -0.7071, 0.7071, 0.7071) * frag / cell * 6.2832;
   float screen = 0.5 + 0.25 * (cos(r.x) + cos(r.y));
   float fw = fwidth(screen) * 0.75;
@@ -212,7 +246,7 @@ function compile(gl: WebGL2RenderingContext) {
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
   gl.enableVertexAttribArray(0);
   gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-  const names = ["uRes", "uScale", "uDpr", "uCell", "uTime", "uIntro", "uGlow", "uGlowBoost", "uPaper"] as const;
+  const names = ["uOrigin", "uMark", "uScale", "uDpr", "uCell", "uCellFine", "uTime", "uIntro", "uGlow", "uGlowBoost", "uPaper"] as const;
   return Object.fromEntries(names.map((n) => [n, gl.getUniformLocation(program, n)])) as Record<(typeof names)[number], WebGLUniformLocation | null>;
 }
 
@@ -236,31 +270,35 @@ export function mountHeroMark(band: HTMLElement, canvas: HTMLCanvasElement, onLo
   const root = document.documentElement;
   const paper = () => (root.dataset.theme === "light" ? 1 : 0);
 
-  // Layout: CSS px per mark unit, and the canvas box in band coordinates.
-  let scale = 1, dpr = 1;
+  // Snap the canvas to whole device pixels so its screen sits on the band frame.
+  let scale = 1, markX = 0, markY = 0;
   function layout() {
-    const w = band.clientWidth, h = band.clientHeight;
-    if (!w || !h) return;
-    scale = Math.min((w * FIT_W) / VIEW.w, (h * FIT_H) / VIEW.h);
-    dpr = Math.min(devicePixelRatio || 1, 2);
-    const cw = (VIEW.w + PAD * 2) * scale, ch = (VIEW.h + PAD * 2) * scale;
-    Object.assign(canvas.style, { width: `${cw}px`, height: `${ch}px`, left: `${w / 2 - cw / 2}px`, top: `${h * MARK_Y - ch / 2}px` });
-    canvas.width = Math.round(cw * dpr);
-    canvas.height = Math.round(ch * dpr);
-    gl!.viewport(0, 0, canvas.width, canvas.height);
-    gl!.uniform2f(u.uRes, canvas.width, canvas.height);
-    gl!.uniform1f(u.uScale, scale * dpr);
-    gl!.uniform1f(u.uDpr, dpr);
-    gl!.uniform1f(u.uCell, (w < 640 ? 3.4 : 4.4) * dpr);
+    const f = bandFrame(band);
+    if (!f.w || !f.h) return;
+    scale = f.scale / f.dpr;
+    markX = f.mark[0] / f.dpr;
+    markY = (f.H - f.mark[1]) / f.dpr;
+    const dw = Math.round((VIEW.w + PAD * 2) * f.scale), dh = Math.round((VIEW.h + PAD * 2) * f.scale);
+    const left = Math.round(f.mark[0] - dw / 2), top = Math.round(f.H - f.mark[1] - dh / 2);
+    Object.assign(canvas.style, { width: `${dw / f.dpr}px`, height: `${dh / f.dpr}px`, left: `${left / f.dpr}px`, top: `${top / f.dpr}px` });
+    canvas.width = dw;
+    canvas.height = dh;
+    gl!.viewport(0, 0, dw, dh);
+    gl!.uniform2f(u.uOrigin, left, f.H - top - dh);
+    gl!.uniform2f(u.uMark, f.mark[0], f.mark[1]);
+    gl!.uniform1f(u.uScale, f.scale);
+    gl!.uniform1f(u.uDpr, f.dpr);
+    gl!.uniform1f(u.uCell, f.cell);
+    gl!.uniform1f(u.uCellFine, f.cellFine);
   }
 
   // Pointer: the glow follows it while it is over (or near) the glass.
   const pointer = [0, 0], glow = [...GLOW_HOME], target = [...GLOW_HOME];
   let hasPointer = false, press = 0;
   const toMark = (e: PointerEvent) => {
-    const r = canvas.getBoundingClientRect();
-    pointer[0] = (e.clientX - r.left - r.width / 2) / scale + CENTER[0];
-    pointer[1] = (e.clientY - r.top - r.height / 2) / scale + CENTER[1];
+    const r = band.getBoundingClientRect();
+    pointer[0] = (e.clientX - r.left - markX) / scale + CENTER[0];
+    pointer[1] = (e.clientY - r.top - markY) / scale + CENTER[1];
     hasPointer = true;
   };
   const leave = () => (hasPointer = false);

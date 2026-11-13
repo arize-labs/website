@@ -11,7 +11,7 @@ make AI work for humanity. The work falls into three threads.
 
 ## Open tooling
 
-Open-source tools for building AI applications, with good practices built in.
+Open-source tools for building agents, with good practices built in.
 
 ## Open evals
 

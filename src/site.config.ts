@@ -1,7 +1,7 @@
 export const site = {
   name: "Arize Labs",
   description:
-    "Where ambition meets creativity. We chase early ideas and build in the open, on a mission to make AI work for humanity.",
+    "Where ambition meets creativity. We chase early ideas and build in the open, with a mission to make AI work for humanity.",
   locale: "en",
   /** The company behind Labs: footer logo, link and copyright holder. */
   parent: { name: "Arize AI", url: "https://arize.com" },

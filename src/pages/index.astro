@@ -1,6 +1,7 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import Hero from "../components/sections/Hero.astro";
+import HeroPhoto from "../components/heroes/HeroPhoto.astro";
 import Section from "../components/sections/Section.astro";
 import Pillars from "../components/sections/Pillars.astro";
 import FeatureRows from "../components/sections/FeatureRows.astro";
@@ -12,7 +13,7 @@ import { getPosts, getTeam } from "../lib/content";
 import { site } from "../site.config";
 
 const pillars = [
-  { name: "Open Tooling", body: "Open-source tools for building AI applications, with good practices built in." },
+  { name: "Open Tooling", body: "Open-source tools for building agents, with good practices built in." },
   { name: "Open Evals", body: "Published evaluations, with the harness and data behind them, so anyone can check the results." },
   { name: "Open Research", body: "Experiments shared while in progress, with write-ups of what worked and what didn't." },
 ];
@@ -28,7 +29,7 @@ const projects = [
     name: "OpenInference",
     href: "https://github.com/Arize-ai/openinference",
     cta: "View on GitHub",
-    body: "A set of semantic conventions and instrumentation libraries, complementary to OpenTelemetry, for tracing AI applications. OpenInference defines how LLM calls, retrievals, tool use and agent steps are recorded, and ships auto-instrumentation for popular model providers and frameworks across Python, JavaScript and Java.",
+    body: "A set of semantic conventions and instrumentation libraries, complementary to OpenTelemetry, for tracing agents. OpenInference defines how LLM calls, retrievals, tool use and agent steps are recorded, and ships auto-instrumentation for popular model providers and frameworks across Python, JavaScript and Java.",
   },
 ];
 
@@ -47,7 +48,9 @@ const team = await getTeam();
 
 <BaseLayout description={site.description}>
   <PageMarkings runs={rulerRuns} marks="main > section:not(#mission)" />
-  <Hero heading="An Open Frontier" lede={site.description} />
+  <Hero heading="An Open Frontier" lede={site.description}>
+    <HeroPhoto slot="art" />
+  </Hero>
 
   <Section id="mission" class="mission">
     <Pillars items={pillars} />

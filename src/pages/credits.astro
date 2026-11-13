@@ -1,0 +1,49 @@
+---
+import PageLayout from "../layouts/PageLayout.astro";
+import { photos, typefaces, type Credit } from "../lib/credits";
+
+const groups: [string, Credit[]][] = [
+  ["Photography", photos],
+  ["Typefaces", typefaces],
+];
+---
+
+<PageLayout
+  heading="Credits"
+  eyebrow="Colophon"
+  intro="Work by others that this site is built with, and the licences it is used under."
+>
+  <div class="credits">
+    {groups.map(([heading, items]) => (
+      <section aria-labelledby={`credits-${heading.toLowerCase()}`}>
+        <h2 id={`credits-${heading.toLowerCase()}`} class="eyebrow">{heading}</h2>
+        <ul>
+          {items.map((c) => (
+            <li>
+              <p class="use eyebrow">{c.use}</p>
+              <p class="title"><a href={c.url}>{c.title}</a></p>
+              <p>
+                by {c.authorUrl ? <a href={c.authorUrl}>{c.author}</a> : c.author}, licensed under{" "}
+                <a href={c.licenseUrl} rel="license">{c.license}</a>.
+              </p>
+              {c.changes && <p class="changes">{c.changes}</p>}
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))}
+  </div>
+</PageLayout>
+
+<style>
+  .credits { display: grid; gap: var(--space-8); max-width: var(--prose-max); padding-bottom: var(--space-section); }
+  h2 { margin-bottom: var(--space-4); }
+  ul { display: grid; margin: 0; padding: 0; list-style: none; }
+  li { display: grid; gap: var(--space-1); padding: var(--space-5) 0; border-top: 1px solid var(--rule); }
+  .use { margin-bottom: var(--space-2); color: var(--dim); }
+  .title { font: 600 var(--text-h3) / 1.25 var(--font-sans); }
+  p { margin: 0; }
+  .changes { color: var(--soft); }
+  a { text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { color: var(--accent); }
+</style>

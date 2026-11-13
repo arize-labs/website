@@ -1,0 +1,46 @@
+---
+/**
+ * Hero background art for the `art` slot: the Karakoram, halftoned (see
+ * hero-photo.ts). Credited on /credits; CC BY-SA 4.0, as is this adaptation.
+ * Without WebGL2 or JavaScript, a greyscale still stands in.
+ */
+import { getImage } from "astro:assets";
+import karakorum from "../../assets/hero/karakorum.jpg";
+import type { PhotoLayout } from "./hero-photo";
+
+const photo = await getImage({ src: karakorum, width: 4096, format: "jpg", quality: 80 });
+
+// Centred on K2, with sky above the summit.
+const layout: PhotoLayout = { focusX: 0.41, fitHeight: 1.04, minWidth: 1.04, top: 0.1 };
+---
+
+<div class="hero-photo" data-hero-photo data-src={photo.src} data-layout={JSON.stringify(layout)} aria-hidden="true">
+  <canvas></canvas>
+  <img class="hero-photo-fallback" src={photo.src} alt="" decoding="async" />
+  <noscript><style>.hero-photo-fallback { display: block !important; }</style></noscript>
+</div>
+
+<style>
+  .hero-photo { position: relative; background: var(--bg); }
+  canvas, .hero-photo-fallback { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .hero-photo-fallback {
+    display: none;
+    object-fit: cover;
+    object-position: 41% 0;
+    filter: grayscale(1) contrast(1.1);
+    opacity: 0.5;
+  }
+  .hero-photo[data-fallback] .hero-photo-fallback { display: block; }
+  .hero-photo[data-fallback] canvas { display: none; }
+</style>
+
+<script>
+  import { mountHeroPhoto, type PhotoLayout } from "./hero-photo";
+
+  for (const host of document.querySelectorAll<HTMLElement>("[data-hero-photo]")) {
+    const canvas = host.querySelector("canvas")!;
+    const layout = JSON.parse(host.dataset.layout!) as PhotoLayout;
+    const fallBack = () => (host.dataset.fallback = "");
+    if (!mountHeroPhoto(canvas, host.dataset.src!, layout, fallBack)) fallBack();
+  }
+</script>
