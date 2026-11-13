@@ -108,7 +108,7 @@ export async function getCards(): Promise<{ file: string; card: Card }[]> {
   const [headline, ...rest] = site.description.split(/(?<=\.)\s+/);
   cards.push({
     key: SITE_CARD,
-    card: { eyebrow: ["Open tooling", "Open evals", "Open research"], title: headline, description: rest.join(" "), panel: { art: "mark", seed: "site" }, alt: site.name },
+    card: { eyebrow: ["Open tooling", "Evals", "Research"], title: headline, description: rest.join(" "), panel: { art: "mark", seed: "site" }, alt: site.name },
   });
 
   for (const [key, load] of Object.entries(PAGES)) {

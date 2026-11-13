@@ -4,10 +4,11 @@
  *
  * Every card has the same two halves, so a feed of our links reads as one
  * series:
- *  - Text, on the left: the lockup and the domain, an eyebrow in mono caps,
- *    the title, then a description or a byline. The title is the largest
- *    thing on the card and is sized to fit, so it survives the smallest
- *    previews.
+ *  - Text, on the left: the lockup, an eyebrow in mono caps, the title, then
+ *    a description or a byline. The title is bold and as large as fits, and
+ *    nothing is smaller than 20px, so it reads in a phone's message preview,
+ *    where the card is shown at about half size. Previews print the domain
+ *    themselves, so the card doesn't.
  *  - A panel, on the right, on the site's dot ground: the post's halftone
  *    cover art, or a framed picture (a cover image, a video poster, a
  *    headshot) with registration crosses on its corners. Video posters get a
@@ -44,11 +45,11 @@ const C = {
 };
 
 // Layout, in card pixels.
-const PANEL_X = 640;
+const PANEL_X = 680;
 const PANEL_W = OG_WIDTH - PANEL_X;
 const PAD_X = 64;
-const PAD_Y = 56;
-const TEXT_W = PANEL_X - PAD_X - 48;
+const PAD_Y = 52;
+const TEXT_W = PANEL_X - PAD_X - 40;
 
 export type CardPicture = {
   image: ImageMetadata;
@@ -76,13 +77,14 @@ export interface Card {
 // Assets
 
 const root = process.cwd();
-let fonts: Promise<{ name: string; data: Buffer; weight: 400 | 500 | 600; style: "normal" }[]> | undefined;
+let fonts: Promise<{ name: string; data: Buffer; weight: 500 | 600 | 700; style: "normal" }[]> | undefined;
 function loadFonts() {
   const file = (pkg: string, name: string) => readFile(join(root, "node_modules/@fontsource", pkg, "files", name));
   fonts ??= Promise.all([
-    file("urbanist", "urbanist-latin-600-normal.woff").then((data) => ({ name: "Urbanist", data, weight: 600 as const, style: "normal" as const })),
+    file("urbanist", "urbanist-latin-700-normal.woff").then((data) => ({ name: "Urbanist", data, weight: 700 as const, style: "normal" as const })),
     file("urbanist", "urbanist-latin-500-normal.woff").then((data) => ({ name: "Urbanist", data, weight: 500 as const, style: "normal" as const })),
-    file("geist-mono", "geist-mono-latin-500-normal.woff").then((data) => ({ name: "Geist Mono", data, weight: 500 as const, style: "normal" as const })),
+    file("urbanist", "urbanist-latin-600-normal.woff").then((data) => ({ name: "Urbanist", data, weight: 600 as const, style: "normal" as const })),
+    file("geist-mono", "geist-mono-latin-600-normal.woff").then((data) => ({ name: "Geist Mono", data, weight: 600 as const, style: "normal" as const })),
   ]);
   return fonts;
 }
@@ -200,9 +202,9 @@ const div = (style: Record<string, unknown>, ...children: Child[]) => el("div", 
 
 const mono = (size: number, color = C.dim) => ({
   fontFamily: "Geist Mono",
-  fontWeight: 500,
+  fontWeight: 600,
   fontSize: size,
-  letterSpacing: size * 0.08,
+  letterSpacing: size * 0.06,
   textTransform: "uppercase" as const,
   color,
 });
@@ -237,27 +239,27 @@ function lineCount(text: string, size: number, width: number) {
  * clamp is the backstop.
  */
 function titleSize(title: string): { size: number; lines: number } {
-  for (const size of [64, 58, 52]) if (lineCount(title, size, TEXT_W * 0.92) <= 3) return { size, lines: 3 };
-  return { size: 46, lines: 4 };
+  for (const size of [80, 72, 64, 58]) if (lineCount(title, size, TEXT_W * 0.92) <= 3) return { size, lines: 3 };
+  return { size: 54, lines: 4 };
 }
 
-export async function renderCard(card: Card, host: string): Promise<Buffer> {
+export async function renderCard(card: Card): Promise<Buffer> {
   const picture = "image" in card.panel ? card.panel : undefined;
   const panel = "image" in card.panel ? await picturePanel(card.panel) : { png: await artPanel(card.panel.seed, card.panel.art), frame: undefined };
 
   const lockup = brandArt.lockup;
-  const lockupH = 40;
+  const lockupH = 52;
   const lockupSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${lockup.viewBox.x} ${lockup.viewBox.y} ${lockup.viewBox.w} ${lockup.viewBox.h}">${lockup.body.replaceAll("#000000", C.ink)}</svg>`;
 
   const { size, lines } = titleSize(card.title);
-  const avatarSize = 44;
+  const avatarSize = 60;
   const people = card.byline?.people ?? [];
   const avatars = await Promise.all(people.filter((p) => p.avatar).map((p) => avatar(p.avatar!, avatarSize)));
 
   const byline =
     card.byline &&
     div(
-      { alignItems: "center", gap: 16 },
+      { alignItems: "center", gap: 18 },
       avatars.length > 0 &&
         div(
           { paddingLeft: 10 },
@@ -267,8 +269,8 @@ export async function renderCard(card: Card, host: string): Promise<Buffer> {
         ),
       div(
         { flexDirection: "column", gap: 6 },
-        div({ ...mono(17, C.ink) }, people.map((p) => p.name).join(", ")),
-        card.byline.meta.length > 0 && div({ ...mono(15) }, card.byline.meta.join("  ·  ")),
+        div({ ...mono(23, C.ink) }, people.map((p) => p.name).join(", ")),
+        card.byline.meta.length > 0 && div({ ...mono(20, C.soft) }, card.byline.meta.join("  ·  ")),
       ),
     );
 
@@ -281,7 +283,7 @@ export async function renderCard(card: Card, host: string): Promise<Buffer> {
             bottom: OG_HEIGHT - (panel.frame.y + panel.frame.h) + 12,
             padding: "5px 9px 4px",
             background: C.ink,
-            ...mono(15, C.paper),
+            ...mono(20, C.paper),
           },
           formatDuration(picture.video),
         )
@@ -296,16 +298,15 @@ export async function renderCard(card: Card, host: string): Promise<Buffer> {
       div(
         { alignItems: "center", justifyContent: "space-between" },
         el("img", { src: dataUri(Buffer.from(lockupSvg), "image/svg+xml"), height: lockupH, width: Math.round((lockupH * lockup.viewBox.w) / lockup.viewBox.h) }),
-        div({ ...mono(15) }, host),
       ),
       div(
-        { flexDirection: "column", flexGrow: 1, justifyContent: "center", gap: 22, paddingTop: 8 },
-        div({ ...mono(17), gap: 0 }, card.eyebrow.join("  ·  ")),
+        { flexDirection: "column", flexGrow: 1, justifyContent: "center", gap: 20, paddingTop: 8 },
+        div({ ...mono(22, C.soft), gap: 0 }, card.eyebrow.join("  ·  ")),
         div(
           {
             fontSize: size,
-            fontWeight: 600,
-            lineHeight: 1.04,
+            fontWeight: 700,
+            lineHeight: 1.02,
             letterSpacing: size * -0.025,
             maxWidth: TEXT_W,
             lineClamp: lines,
@@ -315,7 +316,7 @@ export async function renderCard(card: Card, host: string): Promise<Buffer> {
         ),
         card.description &&
           !card.byline &&
-          div({ fontSize: 26, fontWeight: 500, lineHeight: 1.35, color: C.soft, maxWidth: TEXT_W, lineClamp: 2, display: "block" }, card.description),
+          div({ fontSize: 32, fontWeight: 600, lineHeight: 1.3, color: C.soft, maxWidth: TEXT_W, lineClamp: 3, display: "block" }, card.description),
       ),
       byline,
     ),

@@ -11,8 +11,8 @@ export const getStaticPaths = (async () => {
   return cards.map(({ file, card }) => ({ params: { card: file }, props: { card } }));
 }) satisfies GetStaticPaths;
 
-export const GET: APIRoute<{ card: Card }> = async ({ props, site }) => {
-  const image = await renderCard(props.card, site?.host ?? "");
+export const GET: APIRoute<{ card: Card }> = async ({ props }) => {
+  const image = await renderCard(props.card);
   const type = cardFormat(props.card) === "png" ? "image/png" : "image/jpeg";
   return new Response(new Uint8Array(image), { headers: { "Content-Type": type } });
 };

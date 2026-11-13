@@ -189,10 +189,12 @@ unless a post needs one (see below).
 **Layout.** Every card has the same two halves, so a feed of our links reads
 as a series:
 
-- **Text, left.** The lockup and the domain; an eyebrow in mono caps (`Blog ·
-  Nov 13, 2026`, `Video · …`, `Team`); the title in Urbanist 600, sized to fit
-  three lines (64px down to 46px); then a byline with headshots and the
-  reading time (posts) or one line of description (pages, people).
+- **Text, left.** The lockup; an eyebrow in mono caps (`Blog · Nov 13,
+  2026`, `Video · …`, `Team`); the title in Urbanist 700, sized to fit three
+  lines (80px down to 54px); then a byline with headshots and the reading
+  time (posts) or one line of description (pages, people). Previews show
+  cards at about half size, so nothing on a card is under 20px, and the
+  domain is left to the preview, which prints it anyway.
 - **Panel, right**, on the dot ground: the post's halftone cover art,
   reframed so the subject fills the panel; or a framed picture (a cover
   image, a video poster, a headshot) with registration crosses on its
