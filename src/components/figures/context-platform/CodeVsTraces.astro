@@ -1,0 +1,94 @@
+---
+import Figure from "../../figure/Figure.astro";
+import Diagram from "../../figure/diagram/Diagram.astro";
+import Zone from "../../figure/diagram/Zone.astro";
+import Node from "../../figure/diagram/Node.astro";
+import Wire from "../../figure/diagram/Wire.astro";
+import Chip from "../../figure/diagram/Chip.astro";
+import Legend from "../../figure/diagram/Legend.astro";
+
+const ZH = 492;
+/** A decision: a diamond centred on (x, y). */
+const diamond = (x: number, y: number, hw = 60, hh = 36) => `M${x},${y - hh}L${x + hw},${y}L${x},${y + hh}L${x - hw},${y}Z`;
+---
+
+<Figure title="Traditional software compared with an AI agent" width="wide" ground="dots">
+  <Diagram
+    id="code-vs-traces"
+    height={564}
+    label="On the left, traditional software: handleSubmit checks whether input is valid, errors if not, otherwise calls an API; a 500 status retries and a 200 saves and finishes. Every path is visible in the code before it runs. On the right, an AI agent: agent.run(query) asks an LLM what to do, and it may call search, write or analyze, loop back, or hand off to sub-agents that call more LLMs, with output that differs every run. None of these paths are in the code; they only show up afterwards in the traces. The source of truth shifts from code to traces."
+  >
+    <!-- Traditional software: every branch is written down. -->
+    <Zone x={0} y={0} w={506} h={ZH} tag="Traditional software" note="you can read the logic" />
+    <Chip x={178} y={56} w={150} h={36} label="handleSubmit()" center />
+    <Wire points={[[253, 92], [253, 124]]} />
+    <path class="d-box" d={diamond(253, 160)} />
+    <text class="d-mono" x={253} y={164} text-anchor="middle">valid?</text>
+    <Wire points={[[193, 160], [120, 160]]} label="no" />
+    <Chip x={16} y={142} w={104} h={36} label="Error" center />
+    <Wire points={[[313, 160], [368, 160]]} label="yes" />
+    <Chip x={368} y={142} w={122} h={36} label="callAPI()" center />
+    <Wire points={[[429, 178], [429, 214]]} />
+    <path class="d-box" d={diamond(429, 250)} />
+    <text class="d-mono" x={429} y={254} text-anchor="middle">status?</text>
+    <Wire points={[[369, 250], [250, 250]]} label="500" />
+    <Chip x={146} y={232} w={104} h={36} label="retry()" center />
+    <Wire points={[[429, 286], [429, 322]]} label="200" />
+    <Chip x={368} y={322} w={122} h={36} label="save()" center />
+    <Wire points={[[429, 358], [429, 388]]} />
+    <Chip x={368} y={388} w={122} h={36} label="Done" center />
+    <text class="d-sub" x={16} y={452}>Every path is visible and deterministic.</text>
+    <text class="d-sub" x={16} y={470}>You see all of it before it runs.</text>
+
+    <!-- AI agent: the model picks the path at runtime. -->
+    <Zone x={526} y={0} w={506} h={ZH} tag="AI agent" note="you can't read the logic" />
+    <Chip x={704} y={56} w={150} h={36} label="agent.run(query)" center />
+    <Wire points={[[779, 92], [779, 122]]} />
+    <Node x={699} y={122} w={160} h={56} title="LLM" lines={["what should I do?"]} center state="active" />
+
+    <Wire points={[[699, 150], [646, 150]]} state="idle" />
+    <Chip x={546} y={132} w={100} h={36} label="search()" center />
+    <text class="d-mono d-dim" x={596} y={186} text-anchor="middle">maybe?</text>
+    <Wire points={[[596, 132], [596, 106], [740, 106], [740, 122]]} state="idle" label="loop back" labelAt={[668, 106]} />
+    <Wire points={[[859, 150], [912, 150]]} state="idle" />
+    <Chip x={912} y={132} w={100} h={36} label="write()" center />
+    <text class="d-mono d-dim" x={962} y={186} text-anchor="middle">maybe?</text>
+
+    <Wire points={[[779, 178], [779, 212]]} state="idle" />
+    <Chip x={724} y={212} w={110} h={36} label="analyze()" center />
+    <text class="d-mono d-dim" x={846} y={234}>maybe?</text>
+    <Wire points={[[760, 248], [760, 270], [680, 270], [680, 292]]} state="idle" />
+    <Wire points={[[798, 248], [798, 270], [878, 270], [878, 292]]} state="idle" />
+
+    <Node x={616} y={292} w={128} h={48} title="Sub-agent 1" center titleY={321} />
+    <Wire points={[[744, 316], [814, 316]]} state="idle" />
+    <Node x={814} y={292} w={128} h={48} title="Sub-agent 2" center titleY={321} />
+    <Wire points={[[616, 316], [594, 316]]} state="idle" arrow="both" />
+    <Chip x={542} y={298} w={52} h={36} label="LLM" center />
+    <Wire points={[[942, 316], [964, 316]]} state="idle" arrow="both" />
+    <Chip x={964} y={298} w={52} h={36} label="LLM" center />
+    <text class="d-mono d-dim" x={568} y={352} text-anchor="middle">more loops</text>
+    <text class="d-mono d-dim" x={990} y={352} text-anchor="middle">more loops</text>
+
+    <Wire points={[[680, 340], [680, 356], [760, 356], [760, 372]]} state="idle" />
+    <Wire points={[[878, 340], [878, 356], [798, 356], [798, 372]]} state="idle" />
+    <Chip x={724} y={372} w={110} h={36} label="Output" center />
+    <text class="d-mono d-dim" x={779} y={426} text-anchor="middle">different every time</text>
+    <text class="d-sub" x={542} y={452}>None of this is in the code.</text>
+    <text class="d-sub" x={542} y={470}>You only see it afterwards, in the traces.</text>
+
+    <!-- The shift. -->
+    <Node x={256} y={520} w={140} h={44} title="Code" center titleY={547} />
+    <Wire points={[[396, 542], [636, 542]]} label="source of truth shifts" tone="accent" />
+    <Node x={636} y={520} w={140} h={44} title="Traces" center titleY={547} state="hot" />
+  </Diagram>
+  <Legend
+    items={[
+      { swatch: "line", label: "a path written in the code" },
+      { swatch: "dashed", label: "a path the model may take at runtime" },
+    ]}
+  />
+  <Fragment slot="caption">
+    You can read every branch of traditional software before it runs. An agent decides its path at runtime, so the only record of what it did is in the traces.
+  </Fragment>
+</Figure>

@@ -1,0 +1,82 @@
+---
+/**
+ * Flow from one thing to another: an orthogonal polyline with rounded
+ * corners and a chevron head, plus an optional label on a ground-coloured
+ * mask so it reads over the line. Scenes address it by `k` to light it
+ * (state "on" or "accent"), idle it (dashed), draw it in, or send particles
+ * along it.
+ */
+export interface Props {
+  points: [number, number][];
+  k?: string;
+  /** Which ends get a head. */
+  arrow?: "end" | "start" | "both" | "none";
+  label?: string;
+  /** Label centre; defaults to the middle of the longest segment. */
+  labelAt?: [number, number];
+  tone?: "accent";
+  state?: string;
+  radius?: number;
+  /** Set the label as code (mono, no caps). */
+  code?: boolean;
+  /** Start hidden (data-off), for scenes that draw the wire in. */
+  off?: boolean;
+}
+const { points, k, arrow = "end", label, labelAt, tone, state, radius = 8, code, off } = Astro.props;
+
+function pathFor(pts: [number, number][], r: number) {
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const [px, py] = pts[i - 1];
+    const [cx, cy] = pts[i];
+    const [nx, ny] = pts[i + 1];
+    const l1 = Math.hypot(cx - px, cy - py);
+    const l2 = Math.hypot(nx - cx, ny - cy);
+    const rr = Math.min(r, l1 / 2, l2 / 2);
+    const ax = cx - ((cx - px) / l1) * rr, ay = cy - ((cy - py) / l1) * rr;
+    const bx = cx + ((nx - cx) / l2) * rr, by = cy + ((ny - cy) / l2) * rr;
+    d += `L${ax},${ay}Q${cx},${cy} ${bx},${by}`;
+  }
+  const [lx, ly] = pts[pts.length - 1];
+  return d + `L${lx},${ly}`;
+}
+function head(tip: [number, number], from: [number, number]) {
+  const a = Math.atan2(tip[1] - from[1], tip[0] - from[0]);
+  const s = 6, spread = 0.55;
+  const p1 = [tip[0] - s * Math.cos(a - spread), tip[1] - s * Math.sin(a - spread)];
+  const p2 = [tip[0] - s * Math.cos(a + spread), tip[1] - s * Math.sin(a + spread)];
+  return `M${p1[0]},${p1[1]}L${tip[0]},${tip[1]}L${p2[0]},${p2[1]}`;
+}
+
+const n = points.length;
+const heads = [
+  arrow === "end" || arrow === "both" ? head(points[n - 1], points[n - 2]) : "",
+  arrow === "start" || arrow === "both" ? head(points[0], points[1]) : "",
+].join("");
+
+let at = labelAt;
+if (label && !at) {
+  let best = 0;
+  for (let i = 1; i < n; i++) {
+    const len = Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]);
+    if (len > best) {
+      best = len;
+      at = [(points[i][0] + points[i - 1][0]) / 2, (points[i][1] + points[i - 1][1]) / 2];
+    }
+  }
+}
+// Mono caps at 10px with 0.08em tracking run about 6.9 units a character;
+// 11px code about 6.7.
+const lw = label ? label.length * (code ? 6.7 : 6.9) + 12 : 0;
+---
+
+<g class="d-wire" data-key={k} data-tone={tone} data-state={state} data-off={off ? "" : undefined}>
+  <path class="d-wire-line" d={pathFor(points, radius)} />
+  {heads && <path class="d-wire-head" d={heads} />}
+  {label && at && (
+    <g class="d-wire-label">
+      <rect x={at[0] - lw / 2} y={at[1] - 8} width={lw} height="16" rx="2" />
+      <text class:list={[code && "d-wire-code"]} x={at[0]} y={at[1] + 3.5} text-anchor="middle">{label}</text>
+    </g>
+  )}
+</g>

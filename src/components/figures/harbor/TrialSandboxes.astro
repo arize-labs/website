@@ -1,0 +1,111 @@
+---
+import Figure from "../../figure/Figure.astro";
+import Diagram from "../../figure/diagram/Diagram.astro";
+import Zone from "../../figure/diagram/Zone.astro";
+import Node from "../../figure/diagram/Node.astro";
+import Wire from "../../figure/diagram/Wire.astro";
+import Chip from "../../figure/diagram/Chip.astro";
+import Legend from "../../figure/diagram/Legend.astro";
+---
+
+<Figure
+  title="Per-trial agent sandboxes"
+  width="wide"
+  ground="dots"
+  scene="harbor-trial"
+  status="The agent and the verifier share one container, but tests/ only arrives after the agent stops, so it can't look ahead at the criteria."
+>
+  <Diagram
+    id="harbor-trial"
+    height={452}
+    label="A Harbor trial builds a fresh sandbox from environment/. The agent reads instruction.md and changes the sandbox filesystem. After the agent stops, tests/ is copied into the same sandbox and the verifier runs, inspecting the full sandbox and writing its rewards to reward.json."
+  >
+    <Zone k="sandbox" x={300} y={40} w={560} h={372} tag="Per-trial sandbox container" edge="dashed" tone="accent" />
+
+    <Wire k="w-build" points={[[180, 234], [300, 234]]} label="Builds" labelAt={[240, 234]} />
+    <Wire k="w-read" points={[[180, 282], [332, 282]]} label="Read by" labelAt={[240, 282]} />
+    <Wire k="w-change" points={[[442, 256], [442, 180]]} label="Changes" labelAt={[442, 218]} />
+    <Wire k="w-insert" points={[[180, 330], [232, 330], [232, 436], [718, 436], [718, 368]]} tone="accent" label="Inserted after the agent stops" labelAt={[475, 436]} />
+    <Wire k="w-inspect" points={[[718, 180], [718, 256]]} tone="accent" label="Inspected by" labelAt={[718, 218]} />
+    <Wire k="w-write" points={[[828, 312], [892, 312]]} tone="accent" />
+
+    <Node k="task" x={0} y={150} w={196} h={204} tag="Task" title="Task directory">
+      <Chip x={16} y={216} w={164} h={36} label="environment/" />
+      <Chip x={16} y={264} w={164} h={36} label="instruction.md" />
+      <Chip k="tests" x={16} y={312} w={164} h={36} label="tests/" state="hot" />
+    </Node>
+
+    <Node k="workspace" x={332} y={84} w={496} h={96} tag="Workspace" title="Sandbox filesystem" lines={["code, files and services the agent left behind"]} />
+    <Node k="agent" x={332} y={256} w={220} h={112} tag="Runs first" title="Agent" lines={["any harness and model", "reads instruction.md"]} />
+    <Node k="verifier" x={608} y={256} w={220} h={112} tag="Runs second" title="Verifier" lines={["runs tests/test.sh", "sees the full sandbox"]} tone="accent" />
+    <Node k="rewards" x={892} y={256} w={140} h={112} tag="Result" title="Rewards" lines={["reward.json", "one or more keys"]} tone="accent" />
+  </Diagram>
+  <Legend
+    items={[
+      { swatch: "zone", label: "sandbox boundary" },
+      { swatch: "line-accent", label: "verification path" },
+      { swatch: "line", label: "task files and state" },
+    ]}
+  />
+  <Fragment slot="caption">
+    Each trial gives the agent a fresh sandbox. After the agent finishes, a verifier runs tests to produce rewards.
+  </Fragment>
+</Figure>
+
+<script>
+  import { defineScene } from "../../figure/motion";
+
+  const N = 6;
+
+  defineScene("harbor-trial", {
+    setup(s) {
+      s.hide(["sandbox", "workspace", "agent", "verifier", "rewards", "tests", "w-build", "w-read", "w-change", "w-insert", "w-inspect", "w-write"]);
+      s.caption("How a Harbor trial runs, step by step.");
+    },
+    async play(s) {
+      await s.wait(600);
+
+      s.caption("A trial starts from one task directory: an environment, an instruction, and tests.", 1, N);
+      s.state("task", "active");
+      await s.wait(1400);
+
+      s.caption("environment/ builds a fresh sandbox container for this trial.", 2, N);
+      await s.draw("w-build", 500);
+      s.show("sandbox");
+      await s.wait(1200);
+
+      s.caption("The agent reads instruction.md and works in the sandbox, changing its filesystem.", 3, N);
+      s.state("task", null);
+      await s.draw("w-read", 500);
+      s.show("agent");
+      s.state("agent", "active");
+      await s.stream("w-read", { kind: "call", ms: 500 });
+      await s.draw("w-change", 400);
+      s.show("workspace");
+      await s.stream("w-change", { kind: "payload", n: 24, ms: 900 });
+      await s.wait(900);
+
+      s.caption("The agent stops. Only then is tests/ copied into the same sandbox, so the agent never saw the criteria.", 4, N);
+      s.state("agent", "dim");
+      s.show("tests");
+      await s.draw("w-insert", 1000);
+      await s.stream("w-insert", { kind: "result", ms: 1000 });
+      await s.wait(400);
+
+      s.caption("The verifier runs inside the sandbox and can inspect everything the agent left behind.", 5, N);
+      s.show("verifier");
+      s.state("verifier", "hot");
+      await s.draw("w-inspect", 500);
+      await s.stream("w-inspect", { kind: "payload", n: 24, ms: 900 });
+      await s.wait(700);
+
+      s.caption("The verifier writes its rewards to reward.json.", 6, N);
+      s.state("verifier", null);
+      await s.draw("w-write", 400);
+      s.show("rewards");
+      s.state("rewards", "hot");
+      await s.stream("w-write", { kind: "result", ms: 500 });
+      await s.wait(1400);
+    },
+  });
+</script>

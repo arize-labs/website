@@ -1,0 +1,62 @@
+---
+/**
+ * The frame every figure in a post sits in: a numbered mono caps title, the
+ * figure itself on a frame with registration corners, an optional status
+ * line (what an animated figure is showing right now) and a caption.
+ *
+ *   <Figure title="The tool calling loop" width="wide" scene="tool-calling-loop"
+ *           status="One question, two model calls.">
+ *     <Diagram ...>...</Diagram>
+ *     <Fragment slot="caption">The model never runs a tool itself.</Fragment>
+ *   </Figure>
+ *
+ * Figures number themselves (Fig. 01, 02, ...) in the order they appear in
+ * the post. See DESIGN.md, "Figures".
+ */
+import "./figure.css";
+import { tagSlug } from "../../lib/content";
+
+export interface Props {
+  /** Shown in the header and used as the figure's accessible name. */
+  title: string;
+  /** prose: the 720px reading column. wide: the 1084px content column. */
+  width?: "prose" | "wide";
+  /** Name passed to defineScene() by an animated figure; adds play controls. */
+  scene?: string;
+  /** dots: the page's dot ground behind diagrams. plain: charts. */
+  ground?: "dots" | "plain";
+  /** The status line's text in the finished state (animated figures). */
+  status?: string;
+}
+
+const { title, width = "prose", scene, ground = "plain", status } = Astro.props;
+const id = `fig-${tagSlug(title).slice(0, 48)}`;
+---
+
+<figure class="fig" id={id} data-width={width} data-scene={scene} aria-labelledby={`${id}-title`}>
+  <div class="fig-head">
+    <p class="fig-title" id={`${id}-title`}><span class="fig-num" aria-hidden="true"></span>{title}</p>
+    {scene && (
+      <div class="fig-controls">
+        <button type="button" class="fig-btn" data-fig-action="toggle" data-icon="play" aria-label="Play animation" title="Play animation" hidden>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path class="i-play" d="M5 3.5v9l7-4.5z" /><path class="i-pause" d="M5 3.5h2v9H5zM9 3.5h2v9H9z" /></svg>
+        </button>
+        <button type="button" class="fig-btn" data-fig-action="replay" aria-label="Replay animation" title="Replay animation" hidden>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 8a4.8 4.8 0 1 0 1.4-3.4M3 2.5v2.8h2.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        </button>
+      </div>
+    )}
+  </div>
+  <div class="fig-frame" data-ground={ground}>
+    <div class="fig-body"><slot /></div>
+    {status !== undefined && (
+      <p class="fig-status"><span class="fig-step" data-fig-step></span><span data-fig-status>{status}</span></p>
+    )}
+  </div>
+  {Astro.slots.has("caption") && <figcaption><slot name="caption" /></figcaption>}
+</figure>
+
+<script>
+  import { initFigures } from "./behaviors";
+  initFigures();
+</script>

@@ -32,9 +32,10 @@ src/
     global.css            reset, page grid, shared primitives, prose
   layouts/
     BaseLayout.astro      html shell: head, header, main, footer
-    PageLayout.astro      interior page with title and intro
+    PageLayout.astro      interior page with title and intro (width="prose" for reading pages)
     PostLayout.astro      blog post
   components/
+    PageHeader.astro      the title block shared by pages and posts
     BaseHead.astro        SEO: title, canonical, Open Graph, Twitter, JSON-LD
     sections/             landing-page building blocks (Hero, Section, ...)
     heroes/               hero art; HeroPlaceholder until the Three.js hero lands
@@ -59,6 +60,10 @@ src/
   bad dates and missing fields fail the build.
 
 ## Styling
+
+[`DESIGN.md`](./DESIGN.md) has the design guidelines: page types and
+widths, the title block, long-form content, type, colour and spacing, and a
+checklist for new pages. Read it before adding or restyling a page.
 
 Components read from the custom properties in `src/styles/tokens.css`, so
 most of the external design should land there first. Layout uses a

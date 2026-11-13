@@ -1,0 +1,34 @@
+---
+/**
+ * Picks which [data-variant] panel of the figure shows (see behaviors.ts).
+ * A segmented toggle for two or three options, a select for more.
+ */
+export interface Props {
+  label: string;
+  /** The first option shows first. */
+  options: { id: string; label: string }[];
+  kind?: "segmented" | "select";
+}
+import { tagSlug } from "../../../lib/content";
+const { label, options, kind = options.length > 3 ? "select" : "segmented" } = Astro.props;
+const selected = options[0]?.id;
+const id = `vc-${tagSlug(label)}`;
+---
+
+<div class="fig-toolbar" data-variant-control>
+  {kind === "select" ? (
+    <>
+      <label class="eyebrow" for={id}>{label}</label>
+      <select class="fig-select" id={id}>
+        {options.map((o) => <option value={o.id} selected={o.id === selected}>{o.label}</option>)}
+      </select>
+    </>
+  ) : (
+    <>
+      <span class="eyebrow" id={id}>{label}</span>
+      <div class="fig-seg" role="group" aria-labelledby={id}>
+        {options.map((o) => <button type="button" data-v={o.id} aria-pressed={o.id === selected ? "true" : "false"}>{o.label}</button>)}
+      </div>
+    </>
+  )}
+</div>

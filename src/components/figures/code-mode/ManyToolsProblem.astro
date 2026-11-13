@@ -1,0 +1,187 @@
+---
+import Figure from "../../figure/Figure.astro";
+import Diagram from "../../figure/diagram/Diagram.astro";
+import Zone from "../../figure/diagram/Zone.astro";
+import Node from "../../figure/diagram/Node.astro";
+import Wire from "../../figure/diagram/Wire.astro";
+import Chip from "../../figure/diagram/Chip.astro";
+import Meter from "../../figure/diagram/Meter.astro";
+import Legend from "../../figure/diagram/Legend.astro";
+
+/** The context window as a stack, top to bottom, in its finished (full) state. */
+const STACK_X = 20, STACK_W = 88, STACK_Y = 60;
+const blocks = [
+  { k: "b-sys", h: 6, fill: "soft", label: ["system prompt"] },
+  { k: "b-defs", h: 128, fill: "hatch", label: ["tool definitions", "48 schemas, every turn"] },
+  { k: "b-ask", h: 5, fill: "ink", label: ["user ask"] },
+  { k: "b-payload", h: 40, fill: "dots", label: ["transcript,", "as a tool result"] },
+  { k: "b-echo", h: 40, fill: "dots", label: ["transcript again,", "copied into the call"] },
+  { k: "b-more", h: 22, fill: "dots", label: ["28 more turns"] },
+];
+let y = STACK_Y;
+const stack = blocks.map((b) => {
+  const out = { ...b, y };
+  y += b.h;
+  return out;
+});
+const STACK_END = y;
+
+const servers = [
+  { k: "s-crm", name: "CRM", count: 12, chips: [["c-list-leads", "list_leads"], ["c-update-lead", "update_lead"], ["c-attach", "attach_to_lead"]], more: 9 },
+  { k: "s-meet", name: "Meetings", count: 8, chips: [["c-transcript", "get_transcript"], ["c-list-meetings", "list_meetings"], ["c-recording", "get_recording"]], more: 5 },
+  { k: "s-email", name: "Email", count: 7, chips: [["c-search-email", "search_email"], ["c-send", "send_message"], ["c-thread", "read_thread"]], more: 4 },
+  { k: "s-cal", name: "Calendar", count: 6, chips: [["c-calendar", "get_calendar"], ["c-event", "create_event"], ["c-slot", "find_slot"]], more: 3 },
+  { k: "s-docs", name: "Docs", count: 8, chips: [["c-read-doc", "read_doc"], ["c-search-docs", "search_docs"], ["c-summarize", "summarize_doc"]], more: 5 },
+  { k: "s-tasks", name: "Tasks", count: 7, chips: [["c-create-task", "create_task"], ["c-list-tasks", "list_tasks"], ["c-assign", "assign_task"]], more: 4 },
+];
+const CARD_W = 304, CARD_H = 124;
+const cardAt = (i: number) => ({ x: 396 + (i % 2) * (CARD_W + 16), y: 48 + Math.floor(i / 2) * (CARD_H + 16) });
+---
+
+<Figure
+  title="The too many tools problem"
+  width="wide"
+  ground="dots"
+  scene="many-tools"
+  status="Thirty turns later the window is full, mostly schemas and copies of the same transcript. Nothing is left for the work itself."
+>
+  <Diagram
+    id="many-tools"
+    height={480}
+    label="The too many tools problem. An agent connected to six MCP servers with 48 tools loads every tool definition into the model's context window before the user's request. A transcript enters the context once as a tool result and again when the model copies it into the next tool call. Each turn rereads the whole context, so latency and cost climb until the window is full."
+  >
+    <Zone x={0} y={0} w={264} h={480} tag="Model context window" />
+    <rect class="d-fill-ground" x={STACK_X} y={STACK_Y} width={STACK_W} height={248} />
+    {stack.map((b) => (
+      <>
+        <rect class={`d-fill-${b.fill}`} x={STACK_X} y={b.y} width={STACK_W} height={b.h} data-key={b.k} />
+        <g data-key={`${b.k}-label`}>
+          {b.label.map((line, i) => (
+            <text class="d-sub" x={STACK_X + STACK_W + 12} y={b.y + b.h / 2 - (b.label.length - 1) * 7.5 + 4 + i * 15}>{line}</text>
+          ))}
+        </g>
+      </>
+    ))}
+    <g data-key="full">
+      <line class="d-rule-accent" x1={STACK_X - 4} y1={STACK_END + 1} x2={STACK_X + STACK_W + 4} y2={STACK_END + 1} />
+      <text class="d-tag d-accent" x={STACK_X} y={STACK_END + 22}>Window full</text>
+    </g>
+
+    <line class="d-rule" x1={20} y1={348} x2={244} y2={348} />
+    <text class="d-tag" x={20} y={374}>Cost of each turn</text>
+    <text class="d-mono d-dim" x={244} y={374} text-anchor="end" data-key="turn">turn 30</text>
+    <Meter x={20} y={404} w={224} value={1} k="m-latency" label="latency" />
+    <Meter x={20} y={444} w={224} value={1} k="m-cost" label="cost" />
+
+    <Wire k="w-call" points={[[264, 232], [380, 232]]} label="Call" labelAt={[322, 216]} />
+    <Wire k="w-result" points={[[380, 252], [264, 252]]} label="Result" labelAt={[322, 270]} />
+
+    <Zone x={380} y={0} w={652} h={480} tag="MCP servers" note="six servers, 48 tools, every schema in context on every turn" />
+    {servers.map((sv, i) => {
+      const { x, y } = cardAt(i);
+      return (
+        <Node k={sv.k} x={x} y={y} w={CARD_W} h={CARD_H} tag={sv.name} tagRight={`${sv.count} tools`}>
+          {sv.chips.map(([k, label], j) => (
+            <Chip k={k} x={x + 12 + (j % 2) * 144} y={y + 40 + Math.floor(j / 2) * 38} w={136} label={label} />
+          ))}
+          <Chip x={x + 156} y={y + 78} w={136} label={`+ ${sv.more} more`} tone="more" />
+        </Node>
+      );
+    })}
+  </Diagram>
+  <Legend
+    items={[
+      { swatch: "hatch", label: "tool definitions" },
+      { swatch: "dots", label: "payloads passing through the model" },
+      { swatch: "ink", label: "the user's request" },
+    ]}
+  />
+  <Fragment slot="caption">
+    Every connected server adds its schemas to every request, and every payload a tool returns has to pass through the
+    model to reach the next tool.
+  </Fragment>
+</Figure>
+
+<script>
+  import { defineScene } from "../../figure/motion";
+
+  const BLOCKS = ["b-defs", "b-ask", "b-payload", "b-echo", "b-more"];
+  const SERVERS = ["s-crm", "s-meet", "s-email", "s-cal", "s-docs", "s-tasks"];
+  const N = 5;
+
+  defineScene("many-tools", {
+    setup(s) {
+      s.attr(BLOCKS, "height", 0);
+      s.hide([...BLOCKS.map((b) => `${b}-label`), "full"]);
+      s.attr(["m-latency", "m-cost"], "width", 0);
+      s.text("turn", "turn 0");
+      s.state(["w-call", "w-result"], "idle");
+      s.caption("An agent wired to six MCP servers. Watch the model's context window on the left.");
+    },
+    async play(s) {
+      const meters = async (to: number, ms = 600) => {
+        await Promise.all(["m-latency", "m-cost"].map((k) => s.grow(k, "width", ms, s.final(k, "width") * to)));
+      };
+      await s.wait(700);
+
+      s.caption("Before the user says a word, all 48 tool definitions load into the context window. They're resent on every turn.", 1, N);
+      s.state(SERVERS, "active");
+      s.state("w-result", "on");
+      await Promise.all([s.grow("b-defs", "height", 1700), s.stream("w-result", { kind: "payload", n: 90, ms: 1700 })]);
+      s.show("b-defs-label");
+      s.state(SERVERS, null);
+      s.state("w-result", "idle");
+      await s.wait(500);
+
+      s.caption("The user asks: attach the call transcript to the lead in the CRM. The request is a sliver next to the schemas.", 2, N);
+      await s.grow("b-ask", "height", 400);
+      s.show("b-ask-label");
+      await s.wait(1400);
+
+      s.caption("Turn 1. The model calls get_transcript, and the whole transcript lands in context as a tool result.", 3, N);
+      s.text("turn", "turn 1");
+      s.state("s-meet", "active");
+      s.state("c-transcript", "hot");
+      s.state("w-call", "on");
+      await s.stream("w-call", { kind: "call" });
+      s.state("w-call", "idle");
+      s.state("w-result", "on");
+      await Promise.all([s.grow("b-payload", "height", 1300), s.stream("w-result", { kind: "payload", n: 56, ms: 1300 })]);
+      s.show("b-payload-label");
+      await meters(0.2);
+      s.state(["s-meet", "c-transcript"], null);
+      s.state("w-result", "idle");
+      await s.wait(800);
+
+      s.caption("Turn 2. The model copies the transcript into attach_to_lead token by token, so it enters context a second time.", 4, N);
+      s.text("turn", "turn 2");
+      s.state("s-crm", "active");
+      s.state("c-attach", "hot");
+      s.state("w-call", "on");
+      await Promise.all([s.grow("b-echo", "height", 1500), s.stream("w-call", { kind: "payload", n: 56, ms: 1500 })]);
+      s.show("b-echo-label");
+      s.state("w-call", "idle");
+      await s.stream("w-result", { kind: "call", ms: 450 });
+      await meters(0.5);
+      s.state(["s-crm", "c-attach"], null);
+      await s.wait(800);
+
+      s.caption("Turns 3 to 30. Each round trip rereads everything above it, so every turn is slower and costlier than the last.", 5, N);
+      const cycle: [string, string][] = [["s-email", "c-search-email"], ["s-cal", "c-calendar"], ["s-docs", "c-read-doc"], ["s-tasks", "c-create-task"], ["s-crm", "c-update-lead"], ["s-meet", "c-list-meetings"]];
+      const more = s.grow("b-more", "height", 2600);
+      for (let i = 0; i < cycle.length; i++) {
+        const [server, chip] = cycle[i];
+        s.state(server, "active");
+        s.state(chip, "lit");
+        await s.stream("w-call", { kind: "call", ms: 220 });
+        await s.stream("w-result", { kind: "payload", n: 10, ms: 240 });
+        s.state([server, chip], null);
+        s.text("turn", `turn ${3 + Math.round(((i + 1) * 27) / cycle.length)}`);
+        await meters(0.5 + ((i + 1) / cycle.length) * 0.5, 120);
+      }
+      await more;
+      s.show(["b-more-label", "full"]);
+      await s.wait(1200);
+    },
+  });
+</script>

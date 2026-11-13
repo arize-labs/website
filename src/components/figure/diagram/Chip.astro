@@ -1,0 +1,20 @@
+---
+/** A named tool or function, in mono. tone="more" for an "+ N more" stub. */
+export interface Props {
+  x: number;
+  y: number;
+  w: number;
+  h?: number;
+  label: string;
+  k?: string;
+  state?: string;
+  tone?: "more";
+  center?: boolean;
+}
+const { x, y, w, h = 28, label, k, state, tone, center = false } = Astro.props;
+---
+
+<g class="d-chip" data-key={k} data-state={state} data-tone={tone}>
+  <rect x={x} y={y} width={w} height={h} rx="2" />
+  <text x={center ? x + w / 2 : x + 10} y={y + h / 2 + 4} text-anchor={center ? "middle" : "start"}>{label}</text>
+</g>

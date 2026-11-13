@@ -7,7 +7,11 @@ tags: [agents, tool-calling, sandboxes]
 art: sandbox
 ---
 
-import Embed from "../../components/Embed.astro";
+import CodeModeSandbox from "../../components/figures/code-mode/CodeModeSandbox.astro";
+import ManyToolsProblem from "../../components/figures/code-mode/ManyToolsProblem.astro";
+import ToolCallingLoop from "../../components/figures/code-mode/ToolCallingLoop.astro";
+import ToolCallingVsCodeMode from "../../components/figures/code-mode/ToolCallingVsCodeMode.astro";
+import PxiCodeMode from "../../components/figures/code-mode/PxiCodeMode.astro";
 
 Most conversations about agents center on coding. Whether you use an agent to
 build software or just clean up a spreadsheet, agents' ability to write code has
@@ -55,7 +59,7 @@ harness's job to keep this loop going until the requested task is complete.
 This loop is at the core of every agent, and it works under many circumstances.
 But what happens when the agent is given too many tools?
 
-<Embed src="https://storage.googleapis.com/arize-phoenix-assets/html/tool-calling-loop.html?v=2" title="The tool calling loop" />
+<ToolCallingLoop />
 
 ## The too many tools problem
 
@@ -85,7 +89,7 @@ and intermediate artifacts grows, having the "model in the middle of every step"
 becomes expensive and limits the agent's ability to solve long-horizon tasks.
 The context window simply can't handle the load.
 
-<Embed src="https://storage.googleapis.com/arize-phoenix-assets/html/many_tools_problem.html?v=2" title="The too many tools problem" />
+<ManyToolsProblem />
 
 ## What is code mode?
 
@@ -113,7 +117,7 @@ returns only the useful final output.
 Now we have two tools, fewer turns, and far better token efficiency. This is
 code mode at its core.
 
-<Embed src="https://storage.googleapis.com/arize-phoenix-assets/html/code_mode_sandbox.html?v=2" title="Tools as functions in a sandbox" />
+<CodeModeSandbox />
 
 ## Code mode in practice
 
@@ -183,7 +187,7 @@ setting, and many MCP servers are moving the same direction, increasingly
 exposing their tools as code APIs. Companies are making this bet because code is
 the grain along which model capabilities are advancing the fastest.
 
-<Embed src="https://storage.googleapis.com/arize-phoenix-assets/html/code_mode_diagram.html" title="Direct tool calls compared with code mode" />
+<ToolCallingVsCodeMode />
 
 ## The tradeoffs of code mode
 
@@ -244,7 +248,7 @@ When something goes wrong in a trace, our agents write and run SQL in a sandbox
 to pinpoint the problem via aggregation queries instead of paging through
 results one tool call at a time.
 
-<Embed src="https://storage.googleapis.com/arize-phoenix-assets/html/pxi-code-mode.html" title="Code mode in Phoenix" />
+<PxiCodeMode />
 
 Tool calling made agents useful, but code has undoubtedly helped them scale. The
 models are being tuned for it, the infrastructure has matured around it, and the

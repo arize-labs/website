@@ -1,0 +1,54 @@
+---
+import Figure from "../../figure/Figure.astro";
+import Diagram from "../../figure/diagram/Diagram.astro";
+import Zone from "../../figure/diagram/Zone.astro";
+import Node from "../../figure/diagram/Node.astro";
+import Wire from "../../figure/diagram/Wire.astro";
+import Legend from "../../figure/diagram/Legend.astro";
+
+/** Rows of the three Phoenix records, by centre line. */
+const ROWS = [
+  { title: "Traces", y: 86 },
+  { title: "Evaluations", y: 154 },
+  { title: "Feedback", y: 222 },
+];
+const MID = 154;
+---
+
+<Figure title="Verification in the agent loop" width="wide" ground="dots">
+  <Diagram
+    id="verification-loop"
+    height={344}
+    label="An agentic app sends traces, evaluations and feedback to Arize Phoenix. A coding agent such as Claude Code or Cursor uses the Phoenix CLI to query, correlate and reason over them, then implements a change in the codebase and restarts the app. Re-running the workload produces new traces, which flow back into Phoenix, and the loop repeats."
+  >
+    <Node x={0} y={MID - 28} w={150} h={56} tag="Your app" title="Agentic app" />
+
+    <Zone x={190} y={24} w={210} h={252} tag="Arize Phoenix" />
+    {ROWS.map((r) => (
+      <>
+        <Wire points={r.y === MID ? [[150, MID], [206, MID]] : [[150, MID], [176, MID], [176, r.y], [206, r.y]]} />
+        <Node x={206} y={r.y - 22} w={178} h={44} title={r.title} center titleY={r.y + 5} />
+        <Wire points={r.y === MID ? [[384, MID], [440, MID]] : [[384, r.y], [414, r.y], [414, MID], [440, MID]]} arrow={r.y === MID ? "end" : "none"} />
+      </>
+    ))}
+
+    <Node x={440} y={MID - 28} w={150} h={56} tag="Interface" title="Phoenix CLI" />
+    <text class="d-mono d-dim" x={515} y={MID + 50} text-anchor="middle">px traces</text>
+    <text class="d-mono d-dim" x={515} y={MID + 68} text-anchor="middle">px api graphql</text>
+    <Wire points={[[590, MID], [800, MID]]} label="query, correlate, reason" arrow="both" />
+
+    <Node x={800} y={MID - 32} w={200} h={64} tag="Coding agent" title="Claude Code, Cursor" state="active" />
+    <Wire points={[[900, MID + 32], [900, 250]]} label="implement change, restart" tone="accent" labelAt={[900, 218]} />
+    <Node x={800} y={250} w={200} h={56} tag="Codebase" title="The change, as a PR" tone="accent" />
+    <Wire points={[[800, 278], [740, 278], [740, 326], [75, 326], [75, MID + 28]]} label="re-run the workload" tone="accent" labelAt={[420, 326]} />
+  </Diagram>
+  <Legend
+    items={[
+      { swatch: "line", label: "context the agent reads" },
+      { swatch: "line-accent", label: "the change, proven by re-running" },
+    ]}
+  />
+  <Fragment slot="caption">
+    The coding agent reads the app's traces, evals and feedback through the CLI, ships a change and re-runs the workload. The new traces land back in Phoenix, so the next pass can check whether the change worked.
+  </Fragment>
+</Figure>

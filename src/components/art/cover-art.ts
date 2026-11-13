@@ -28,7 +28,7 @@
  */
 import { CENTER, DOT_R, HOLE, HOLE_R, OUTER, OUTER_R, VIEW, markDistance } from "../heroes/hero-mark";
 
-export const ART_KINDS = ["mark", "pulse", "bloom", "trace", "graph", "signal", "sandbox"] as const;
+export const ART_KINDS = ["mark", "pulse", "bloom", "trace", "graph", "signal", "sandbox", "verdicts"] as const;
 export type ArtKind = (typeof ART_KINDS)[number];
 
 const W = 400;
@@ -556,7 +556,58 @@ function sandbox(g: Graphic, rand: Rand) {
   g.line(`M${num(gx)} ${num(gy0)}V${num(gy1)}`, "soft", { dash: "1 3" });
 }
 
-const KINDS: Record<ArtKind, (g: Graphic, rand: Rand, seed: number) => void> = { mark, pulse, bloom, trace, graph, signal, sandbox };
+/**
+ * Verdicts: ten repeated judgments against one probability. Each row is an
+ * example: ten cells on the left are an LLM judge run ten times (filled for
+ * one label, outlined for the other), and the bar on the right is a single
+ * probability for the same example. Where the judge wavers the probability
+ * sits near the dashed 0.5 line; that bar is the one orange mark.
+ */
+function verdicts(g: Graphic, rand: Rand) {
+  const rows = 4, runs = 10, cell = 10, pitch = 14;
+  // A little wider than the usual box, still inside the phone crop.
+  const left = X0 - 6, right = X1 + 6;
+  const top = Y0 + 4, rowH = (Y1 - 4 - top) / rows;
+  const barX = left + runs * pitch - (pitch - cell) + 18, barW = right - barX;
+  const waver = 1 + Math.floor(rand() * (rows - 1));
+  const data = Array.from({ length: rows }, (_, r) => {
+    const flips = r === waver ? 4 : rand() < 0.35 ? 1 : 0;
+    const odd = new Set<number>();
+    while (odd.size < flips) odd.add(Math.floor(rand() * runs));
+    const p = r === waver ? 0.54 + rand() * 0.06 : flips ? 0.78 + rand() * 0.06 : 0.9 + rand() * 0.07;
+    return { y: Math.round(top + r * rowH + (rowH - cell) / 2), odd, p };
+  });
+  const cellX = (k: number) => left + k * pitch;
+
+  g.print((x, y) => {
+    let ink = 0, sig = 0;
+    for (const [r, row] of data.entries()) {
+      if (y < row.y - 12 || y > row.y + cell + 12) continue;
+      const cy = row.y + cell / 2;
+      // Filled cells carry no glow, so neighbouring runs stay apart.
+      for (let k = 0; k < runs; k++) {
+        if (!row.odd.has(k)) ink = Math.max(ink, 0.85 * solid(sdBox(x, y, cellX(k) + cell / 2, cy, cell / 2 - 1, cell / 2 - 1)));
+      }
+      const w = barW * row.p;
+      const d = sdBox(x, y, barX + w / 2, cy, w / 2 - 1, cell / 2 - 1);
+      // Lit from the left: the fill brightens toward its start.
+      const shade = 1 - 0.25 * clamp((x - barX) / barW);
+      if (r === waver) sig = Math.max(sig, solid(d) * shade + 0.32 * glow(d, 7));
+      else ink = Math.max(ink, solid(d) * 0.85 * shade + 0.14 * glow(d, 5));
+    }
+    return [ink, sig];
+  });
+
+  const half = Math.round(barX + barW / 2) + 0.5;
+  g.line(`M${half} ${top - 6}V${Y1 + 2}`, "faint", { dash: "2 3" });
+  for (const [r, row] of data.entries()) {
+    for (let k = 0; k < runs; k++) g.box(cellX(k), row.y, cell, cell, row.odd.has(k) ? "ink" : "soft");
+    g.box(barX, row.y, barW, cell, "faint");
+    g.box(barX, row.y, Math.round(barW * row.p), cell, r === waver ? "sig" : "soft");
+  }
+}
+
+const KINDS: Record<ArtKind, (g: Graphic, rand: Rand, seed: number) => void> = { mark, pulse, bloom, trace, graph, signal, sandbox, verdicts };
 
 /**
  * The cover art for `seed` (a post id) as an SVG string. Without a `kind`,

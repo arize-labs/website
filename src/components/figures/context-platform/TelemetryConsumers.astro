@@ -1,0 +1,63 @@
+---
+import Figure from "../../figure/Figure.astro";
+import Diagram from "../../figure/diagram/Diagram.astro";
+import Zone from "../../figure/diagram/Zone.astro";
+import Node from "../../figure/diagram/Node.astro";
+import Wire from "../../figure/diagram/Wire.astro";
+import Legend from "../../figure/diagram/Legend.astro";
+
+/** Three phases side by side; each column is the same stack, read top down. */
+const ZW = 328, GAP = 24, NX = 64, NW = 232, H = 480;
+const phases = [
+  { tag: "Phase 1", note: "software 1.0", caption: ["The human is the only consumer", "of telemetry."] },
+  { tag: "Phase 2", note: "software 2.0", caption: ["The human prompts; an agent writes", "the code inside the IDE."] },
+  { tag: "Phase 3", note: "autonomous", caption: ["An agent consumes the telemetry", "on its own."] },
+].map((p, i) => ({ ...p, x: i * (ZW + GAP) }));
+const [p1, p2, p3] = phases;
+const cx = (x: number) => x + NX + NW / 2;
+/** The deploy wire: out of the last node's left edge, up the column, into the application. */
+const deploy = (x: number, fromY: number): [number, number][] => [[x + NX, fromY], [x + 32, fromY], [x + 32, 80], [x + NX, 80]];
+---
+
+<Figure title="Who consumes telemetry data" width="wide" ground="dots">
+  <Diagram
+    id="telemetry-consumers"
+    height={H}
+    label="Three phases of software. In phase 1, an application sends telemetry to an observability platform, a human developer reads it and writes code in an IDE, and the code is deployed. In phase 2, the human reads the telemetry and prompts a coding agent inside an agentic IDE, which writes the code. In phase 3, a coding agent reads the telemetry itself, iterates, deploys, and only notifies a human, who monitors."
+  >
+    {phases.map((p) => (
+      <Zone x={p.x} y={0} w={ZW} h={H} tag={p.tag} note={p.note}>
+        <Node x={p.x + NX} y={56} w={NW} h={48} title="Application" center titleY={85} />
+        <Wire points={[[cx(p.x), 104], [cx(p.x), 136]]} label="telemetry" />
+        <Node x={p.x + NX} y={136} w={NW} h={48} title="Observability platform" center titleY={165} />
+        {p.caption.map((line, i) => <text class="d-sub" x={p.x + 16} y={440 + i * 18}>{line}</text>)}
+      </Zone>
+    ))}
+
+    <!-- Phase 1: the human reads, then writes the code by hand. -->
+    <Wire points={[[cx(p1.x), 184], [cx(p1.x), 216]]} label="reads" tone="accent" />
+    <Node x={p1.x + NX} y={216} w={NW} h={48} title="Human developer" center titleY={245} tone="accent" />
+    <Wire points={[[cx(p1.x), 264], [cx(p1.x), 296]]} label="writes code" />
+    <Node x={p1.x + NX} y={296} w={NW} h={48} title="IDE" center titleY={325} />
+    <Wire points={deploy(p1.x, 320)} label="deploy" />
+
+    <!-- Phase 2: the human still reads; an agent writes. -->
+    <Wire points={[[cx(p2.x), 184], [cx(p2.x), 216]]} label="reads" tone="accent" />
+    <Node x={p2.x + NX} y={216} w={NW} h={48} title="Human developer" center titleY={245} tone="accent" />
+    <Wire points={[[cx(p2.x), 264], [cx(p2.x), 296]]} label="prompts" />
+    <Node x={p2.x + NX} y={296} w={NW} h={112} tag="Agentic IDE" tone="ghost" />
+    <Node x={p2.x + NX + 16} y={332} w={NW - 32} h={60} title="Coding agent" lines={["Claude Code, Cursor"]} />
+    <Wire points={deploy(p2.x, 352)} label="deploy" />
+
+    <!-- Phase 3: the agent reads, iterates and deploys; the human is told. -->
+    <Wire points={[[cx(p3.x), 184], [cx(p3.x), 216]]} label="reads, iterates" tone="accent" arrow="both" />
+    <Node x={p3.x + NX} y={216} w={NW} h={60} title="Coding agent" lines={["Claude Code, Cursor"]} tone="accent" />
+    <Wire points={[[cx(p3.x), 276], [cx(p3.x), 312]]} label="notifies" />
+    <Node x={p3.x + NX} y={312} w={NW} h={60} title="Human" lines={["monitors only"]} />
+    <Wire points={deploy(p3.x, 246)} label="deploy" />
+  </Diagram>
+  <Legend items={[{ swatch: "line-accent", label: "who reads the telemetry" }]} />
+  <Fragment slot="caption">
+    In each phase, the code ships the same way. What changes is who reads the telemetry. Observability platforms have to grow from dashboards for humans into programmatic interfaces that agents can use.
+  </Fragment>
+</Figure>

@@ -1,0 +1,171 @@
+---
+import Figure from "../../figure/Figure.astro";
+import Diagram from "../../figure/diagram/Diagram.astro";
+import Zone from "../../figure/diagram/Zone.astro";
+import Node from "../../figure/diagram/Node.astro";
+import Wire from "../../figure/diagram/Wire.astro";
+import Chip from "../../figure/diagram/Chip.astro";
+import Code from "../../figure/diagram/Code.astro";
+import Meter from "../../figure/diagram/Meter.astro";
+import Legend from "../../figure/diagram/Legend.astro";
+
+/** Lanes top to bottom; the scene plays them in `order`. */
+const lanes = [
+  {
+    key: "bash", badge: "bash", note: "virtual shell, persistent workspace", data: "GraphQL API", dataLines: ["phoenix-gql writes the", "response to a file"], bulk: "Response",
+    code: ["phoenix-gql -f q.graphql --output spans.json", "grep -c '\"statusCode\":\"ERROR\"' spans.json", "# 31"],
+  },
+  {
+    key: "execute", badge: "execute", note: "sandboxed Python, returns a value", data: "REST API", dataLines: ["experiments, datasets,", "spans via call_tool"], bulk: "500 runs",
+    code: ['res = await «call_tool»("experiment_runs", q)', 'bad = [r for r in res["data"] if r["error"]]', 'return {"failed": len(bad), "sample": bad[:3]}'],
+    status: "all 500 runs stay here, filtered in place",
+  },
+  {
+    key: "sql", badge: "executeSql", note: "read-only SQL, aggregated", data: "Database", dataLines: ["spans, traces,", "experiments; read-only"], bulk: "Spans",
+    code: ["SELECT name, count(*) AS errors", "FROM spans WHERE status_code = 'ERROR'", "GROUP BY name ORDER BY errors DESC LIMIT 5"],
+    status: "thousands of spans grouped into five rows",
+  },
+];
+const LANE_Y = [44, 188, 332];
+const rows = [
+  { k: "row-1", text: "→ execute · three lines of code", accent: false },
+  { k: "row-2", text: "← 31 failed runs, 3 samples", accent: true },
+  { k: "row-3", text: "→ executeSql · one query", accent: false },
+  { k: "row-4", text: "← 5 rows, retriever leads", accent: true },
+  { k: "row-5", text: "→ bash · two commands", accent: false },
+  { k: "row-6", text: "← stdout: 31", accent: true },
+];
+---
+
+<Figure
+  title="Code mode in Phoenix"
+  width="wide"
+  ground="dots"
+  scene="pxi-code-mode"
+  status="Three jobs, three surfaces. Each sends a little code, and only the answer crosses back into the model's context."
+>
+  <Diagram
+    id="pxi-code-mode"
+    height={480}
+    label="PXI's three code mode surfaces, bash, execute and executeSql, run inside the Phoenix server next to the data. The model sends a little code, the sandbox pulls the payload and reduces it in place, and only the answer crosses back into the model's context window."
+  >
+    <Zone x={0} y={0} w={264} h={480} tag="Model context window" />
+    <text class="d-mono d-dim" x={20} y={64} data-key="rows-empty" data-off>waiting for the next turn</text>
+    {rows.map((r, i) => <text class:list={["d-mono", r.accent ? "d-accent" : "d-dim"]} x={20} y={64 + i * 22} data-key={r.k}>{r.text}</text>)}
+    <line class="d-rule" x1={20} y1={210} x2={244} y2={210} />
+    <text class="d-tag" x={20} y={236}>Context consumed</text>
+    <Meter x={20} y={270} w={224} value={0.12} fill="accent" k="g-code" label="with code mode" />
+    <Meter x={20} y={318} w={224} value={1} fill="hatch" k="g-ghost" label="paging every result into context" />
+    <text class="d-tag d-accent" x={20} y={350} data-key="g-full">Window exhausted</text>
+
+    <Zone x={344} y={0} w={688} h={480} tag="Phoenix server" note="the sandboxes run in-process, next to the data" />
+    {lanes.map((l, i) => {
+      const y = LANE_Y[i];
+      const mid = y + 64;
+      return (
+        <>
+          <Wire k={`req-${l.key}`} points={[[264, mid - 8], [360, mid - 8]]} label={i === 1 ? "Code" : undefined} labelAt={[312, mid - 24]} />
+          <Wire k={`ret-${l.key}`} points={[[360, mid + 8], [264, mid + 8]]} tone="accent" label={i === 1 ? "Result" : undefined} labelAt={[312, mid + 24]} />
+          <Wire k={`bulk-${l.key}`} points={[[840, mid], [732, mid]]} label={l.bulk} labelAt={[786, mid - 14]} />
+          <Node k={`lane-${l.key}`} x={360} y={y} w={372} h={128}>
+            <Chip x={372} y={y + 12} w={l.badge.length * 6.9 + 20} h={22} label={l.badge} center />
+            <text class="d-sub" x={372 + l.badge.length * 6.9 + 30} y={y + 27}>{l.note}</text>
+            <Code x={372} y={y + 44} w={348} lines={l.code} k={`code-${l.key}`} lineHeight={15} pad={10} />
+            {l.status && <text class="d-mono d-dim" x={372} y={y + 118} data-key={`status-${l.key}`}>{l.status}</text>}
+            {l.key === "bash" && (
+              <g data-key="ws-chip">
+                <Chip x={372} y={y + 104} w={92} h={20} label="spans.json" />
+                <text class="d-sub" x={474} y={y + 118}>saved in the workspace for later turns</text>
+              </g>
+            )}
+          </Node>
+          <Node k={`data-${l.key}`} x={840} y={y + 22} w={176} h={84} title={l.data} lines={l.dataLines} />
+        </>
+      );
+    })}
+  </Diagram>
+  <Legend
+    items={[
+      { swatch: "dots", label: "payload, which stays in the sandbox" },
+      { swatch: "accent", label: "what reaches the model" },
+      { swatch: "hatch", label: "the same results paged into context" },
+    ]}
+  />
+  <Fragment slot="caption">
+    PXI's three code mode surfaces: a shell with a workspace, sandboxed Python, and read-only SQL against the Phoenix database.
+  </Fragment>
+</Figure>
+
+<script>
+  import { defineScene } from "../../figure/motion";
+  import type { Scene } from "../../figure/motion";
+
+  const SCENES = [
+    {
+      key: "execute",
+      caption: "Reviewing experiment results. PXI filters hundreds of runs inside the sandbox and returns only the failures it wants to look at.",
+      rows: ["row-1", "row-2"], code_share: 0.05, ghost_share: 0.55, status: "status-execute",
+    },
+    {
+      key: "sql",
+      caption: "Debugging a failing trace. One aggregation query shows where errors cluster, instead of paging through spans a tool call at a time.",
+      rows: ["row-3", "row-4"], code_share: 0.04, ghost_share: 0.3, status: "status-sql",
+    },
+    {
+      key: "bash",
+      caption: "Working across turns. A GraphQL response lands in the workspace as a file, so later commands grep it without fetching it again.",
+      rows: ["row-5", "row-6"], code_share: 0.03, ghost_share: 0.45, status: "ws-chip",
+    },
+  ];
+  const ROWS = SCENES.flatMap((sc) => sc.rows);
+
+  async function lane(s: Scene, sc: (typeof SCENES)[number], i: number, used: { code: number; ghost: number }) {
+    // Both meters share one track; g-ghost fills it in the finished state.
+    const W = s.final("g-ghost", "width");
+    s.caption(sc.caption, i + 1, SCENES.length);
+    s.state([`lane-${sc.key}`, `data-${sc.key}`], "active");
+    await s.wait(500);
+    s.state(`req-${sc.key}`, "on");
+    const typing = s.type(`code-${sc.key}`, 1100);
+    await s.stream(`req-${sc.key}`, { kind: "call" });
+    s.show(sc.rows[0]);
+    s.hide("rows-empty");
+    s.state(`req-${sc.key}`, null);
+    await typing;
+    s.state(`bulk-${sc.key}`, "on");
+    const ghost = used.ghost + sc.ghost_share;
+    await Promise.all([
+      s.stream(`bulk-${sc.key}`, { kind: "payload", n: 56, ms: 1500 }),
+      s.grow("g-ghost", "width", 1500, Math.min(1, ghost) * W),
+    ]);
+    used.ghost = ghost;
+    if (used.ghost >= 1) s.show("g-full");
+    s.state(`bulk-${sc.key}`, null);
+    s.show(sc.status);
+    await s.wait(300);
+    s.state(`ret-${sc.key}`, "accent");
+    await s.stream(`ret-${sc.key}`, { kind: "result", ms: 700 });
+    used.code += sc.code_share;
+    await s.grow("g-code", "width", 300, used.code * W);
+    s.show(sc.rows[1]);
+    s.state(`ret-${sc.key}`, null);
+    await s.wait(1600);
+    s.state([`lane-${sc.key}`, `data-${sc.key}`], null);
+  }
+
+  defineScene("pxi-code-mode", {
+    setup(s) {
+      s.hide([...ROWS, "g-full", "status-execute", "status-sql", "ws-chip"]);
+      s.show("rows-empty");
+      s.attr(["g-code", "g-ghost"], "width", 0);
+      SCENES.forEach((sc) => s.blank(`code-${sc.key}`));
+      s.state(SCENES.flatMap((sc) => [`req-${sc.key}`, `ret-${sc.key}`, `bulk-${sc.key}`]), "idle");
+      s.caption("PXI writes a little code, the sandbox next to the data does the heavy lifting, and a small result comes back.");
+    },
+    async play(s) {
+      await s.wait(800);
+      const used = { code: 0, ghost: 0 };
+      for (let i = 0; i < SCENES.length; i++) await lane(s, SCENES[i], i, used);
+    },
+  });
+</script>

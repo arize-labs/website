@@ -8,6 +8,12 @@ astro dev --background
 
 Manage the background server with `astro dev stop`, `astro dev status`, and `astro dev logs`.
 
+## Design
+
+Follow [`DESIGN.md`](./DESIGN.md) when adding or changing pages: pick the
+page type (index or reading), use `PageLayout`/`PostLayout` for the title
+block, and use tokens from `src/styles/tokens.css` only.
+
 ## Documentation
 
 Full documentation: https://docs.astro.build

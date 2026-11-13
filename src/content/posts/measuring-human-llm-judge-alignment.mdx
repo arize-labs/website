@@ -8,6 +8,8 @@ tags: [evals, llm-as-a-judge, annotation]
 art: pulse
 ---
 
+import Callout from "../../components/Callout.astro";
+
 LLM judges make it possible to evaluate large datasets quickly, but before relying on one, you need to know how closely its judgments match those of human experts.
 
 No single number can tell you whether an LLM judge is trustworthy. Before you can trust the judge, you need to know whether the task itself is well-defined, whether the judge applies the rubric within the observed range of human judgments, and where exactly it goes wrong. Each of those is a separate question, and each calls for a different kind of measurement.
@@ -20,7 +22,7 @@ A complete measure of evaluation alignment can be broken down into three questio
 
 This guide will help you answer each of these important questions and choose the right approach for your setup.
 
-**TL;DR**
+<Callout title="TL;DR">
 
 - Collect multiple human annotations on a representative subset. Use disagreements to identify problems with the criteria and create a more defensible reference.
 - Report raw human–human agreement alongside a chance-adjusted metric such as Cohen's kappa, Fleiss' kappa, or Krippendorff's alpha (depending on your annotation setup).
@@ -28,6 +30,8 @@ This guide will help you answer each of these important questions and choose the
 - Create the reference through adjudication or a true majority vote. Preserve ties and low-consensus cases rather than assigning an arbitrary label.
 - Against that reference, treat the LLM judge as a classifier. Report precision, recall, F1, class counts, and the confusion matrix.
 - Ensure that each important class—not only the dataset overall—has enough examples, and report uncertainty around the main results.
+
+</Callout>
 
 ## Step 1: Define the task before choosing a metric
 

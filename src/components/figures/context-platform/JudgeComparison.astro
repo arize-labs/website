@@ -1,0 +1,64 @@
+---
+import Figure from "../../figure/Figure.astro";
+import Diagram from "../../figure/diagram/Diagram.astro";
+import Zone from "../../figure/diagram/Zone.astro";
+import Node from "../../figure/diagram/Node.astro";
+import Wire from "../../figure/diagram/Wire.astro";
+
+/**
+ * Both judges share one layout: inputs in a row above, the judge in the
+ * middle, results below. The agent also has neighbours on its own row,
+ * because it works with them in a loop.
+ */
+const ZW = 506, ZH = 388, IN_Y = 64, HUB_Y = 184, OUT_Y = 304, BH = 44;
+const inputs = (x0: number, names: string[]) => names.map((title, i) => ({ title, x: x0 + 24 + i * 159, w: 140 }));
+const hubX = (x0: number) => x0 + 183;
+/** A wire from an input's bottom into the hub's top, offset by `dx` from the hub's centre. */
+const feed = (inX: number, x0: number, dx: number): [number, number][] => {
+  const from = inX + 70, to = hubX(x0) + 70 + dx;
+  return from === to ? [[from, IN_Y + BH], [to, HUB_Y]] : [[from, IN_Y + BH], [from, 146], [to, 146], [to, HUB_Y]];
+};
+const L = 0, R = ZW + 20;
+const left = inputs(L, ["Input", "Output", "Criteria"]);
+const right = inputs(R, ["Context", "Traces", "Sandbox"]);
+const DX = [-30, 0, 30];
+---
+
+<Figure title="LLM-as-a-judge compared with agent-as-a-judge" width="wide" ground="dots">
+  <Diagram
+    id="judge-comparison"
+    height={ZH}
+    label="On the left, LLM-as-a-judge is a single pass: an input, an output and criteria go into an LLM, which returns a label, a score and an explanation. On the right, agent-as-a-judge is iterative: context, traces and a sandbox feed an agent, which uses tools and works back and forth with sub-agents, and produces multi-criteria evals and feedback."
+  >
+    <Zone x={L} y={0} w={ZW} h={ZH} tag="LLM-as-a-judge" note="single pass" />
+    {left.map((n, i) => (
+      <>
+        <Node x={n.x} y={IN_Y} w={n.w} h={BH} title={n.title} center titleY={IN_Y + 27} />
+        <Wire points={feed(n.x, L, DX[i])} />
+      </>
+    ))}
+    <Node x={hubX(L)} y={HUB_Y} w={140} h={56} title="LLM" center titleY={HUB_Y + 33} state="active" />
+    <Wire points={[[hubX(L) + 70, HUB_Y + 56], [hubX(L) + 70, OUT_Y]]} />
+    <Node x={hubX(L) - 40} y={OUT_Y} w={220} h={BH} title="Label, score, explanation" center titleY={OUT_Y + 27} />
+
+    <Zone x={R} y={0} w={ZW} h={ZH} tag="Agent-as-a-judge" note="iterative" />
+    {right.map((n, i) => (
+      <>
+        <Node x={n.x} y={IN_Y} w={n.w} h={BH} title={n.title} center titleY={IN_Y + 27} />
+        <Wire points={feed(n.x, R, DX[i])} />
+      </>
+    ))}
+    <Node x={R + 16} y={HUB_Y + 6} w={124} h={BH} title="Tools" center titleY={HUB_Y + 33} />
+    <Wire points={[[R + 140, HUB_Y + 28], [hubX(R), HUB_Y + 28]]} arrow="both" />
+    <Node x={hubX(R)} y={HUB_Y} w={140} h={56} title="Agent" center titleY={HUB_Y + 33} tone="accent" state="hot" />
+    <Wire points={[[hubX(R) + 140, HUB_Y + 28], [R + 366, HUB_Y + 28]]} arrow="both" />
+    <Node x={R + 366} y={HUB_Y + 6} w={124} h={BH} title="Sub-agents" center titleY={HUB_Y + 33} />
+    <Wire points={[[hubX(R) + 50, HUB_Y + 56], [hubX(R) + 50, 272], [R + 112, 272], [R + 112, OUT_Y]]} />
+    <Wire points={[[hubX(R) + 90, HUB_Y + 56], [hubX(R) + 90, 272], [R + 330, 272], [R + 330, OUT_Y]]} />
+    <Node x={R + 32} y={OUT_Y} w={160} h={BH} title="Multi-criteria evals" center titleY={OUT_Y + 27} />
+    <Node x={R + 250} y={OUT_Y} w={160} h={BH} title="Feedback" center titleY={OUT_Y + 27} />
+  </Diagram>
+  <Fragment slot="caption">
+    An LLM judge scores one input/output pair in a single pass. An agent judge works in a loop: it reads traces, runs code in a sandbox, calls tools and sub-agents, and returns evals on several criteria plus feedback.
+  </Fragment>
+</Figure>

@@ -2,6 +2,7 @@
 import { Image } from "astro:assets";
 import { getEntries } from "astro:content";
 import BaseLayout from "./BaseLayout.astro";
+import PageHeader from "../components/PageHeader.astro";
 import Byline from "../components/Byline.astro";
 import FormattedDate from "../components/FormattedDate.astro";
 import TagList from "../components/TagList.astro";
@@ -28,10 +29,8 @@ const readingMinutes = Math.max(1, Math.round((post.body ?? "").split(/\s+/).fil
   image={cover?.src}
 >
   <article class="post">
-    <header class="post-header">
-      <h1>{title}</h1>
-      <p class="description">{description}</p>
-      <div class="meta eyebrow">
+    <PageHeader heading={title} intro={description} width="prose">
+      <Fragment slot="meta">
         <span>
           <FormattedDate date={pubDate} />
           {updatedDate && <> · Updated <FormattedDate date={updatedDate} /></>}
@@ -39,8 +38,8 @@ const readingMinutes = Math.max(1, Math.round((post.body ?? "").split(/\s+/).fil
         <span>By <Byline authors={authors} /></span>
         <span>{readingMinutes} min read</span>
         <ShareLinks title={title} />
-      </div>
-    </header>
+      </Fragment>
+    </PageHeader>
 
     {cover && (
       <figure class="cover">
@@ -48,31 +47,18 @@ const readingMinutes = Math.max(1, Math.round((post.body ?? "").split(/\s+/).fil
       </figure>
     )}
 
-    <div class="prose body">
+    <div class="prose body reading-column">
       <slot />
     </div>
 
-    <footer class="post-footer">
+    <footer class="post-footer reading-column">
       <TagList tags={tags} />
     </footer>
   </article>
 </BaseLayout>
 
 <style>
-  /* The reading column is narrower than the content column; centre it. A
-     cover image keeps the full content width. */
-  .post-header, .body, .post-footer { margin-inline: auto; }
-  .post-header { max-width: var(--prose-max); padding: var(--space-9) 0 var(--space-7); }
-  h1 { font: 600 var(--text-h2) / 1.05 var(--font-sans); letter-spacing: var(--tracking-tight); text-wrap: balance; }
-  .description { margin-top: var(--space-4); color: var(--soft); font-size: var(--text-intro); line-height: 1.45; }
-  /* One line of mono caps: date, author, reading time, share. It wraps on
-     narrow screens. */
-  .meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-6); margin-top: var(--space-6); }
-  .meta :global(a) { color: inherit; }
+  /* A cover image keeps the full content width. */
   .cover { margin-bottom: var(--space-7); border: 1px solid var(--rule); }
-  .post-footer { max-width: var(--prose-max); margin-top: var(--space-8); padding-top: var(--space-5); border-top: 1px solid var(--rule); }
-
-  @media (max-width: 720px) {
-    .post-header { padding: var(--space-7) 0 var(--space-6); }
-  }
+  .post-footer { margin-top: var(--space-8); padding-top: var(--space-5); border-top: 1px solid var(--rule); }
 </style>

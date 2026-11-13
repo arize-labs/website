@@ -46,8 +46,6 @@ const pages = defineCollection({
   schema: z.object({
     title: z.string(),
     description: z.string(),
-    eyebrow: z.string().optional(),
-    updatedDate: z.coerce.date().optional(),
   }),
 });
 

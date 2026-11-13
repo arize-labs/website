@@ -1,0 +1,49 @@
+---
+/**
+ * One thing in the system: a box with an optional mono caps tag (and a
+ * second tag on the right), a title, and lines of supporting text. Extra SVG
+ * in the slot is drawn inside the node's group, so it shares its state.
+ *
+ * States set by scenes: active (ink edge), hot (accent edge and tint),
+ * dim (faded). Tones fixed in markup: accent, ghost.
+ */
+export interface Props {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  tag?: string;
+  tagRight?: string;
+  title?: string;
+  /** Large conversational text (a user's message) instead of a title. */
+  say?: string;
+  lines?: string[];
+  /** Render lines in mono, e.g. file names. */
+  mono?: boolean;
+  tone?: "accent" | "ghost";
+  state?: string;
+  k?: string;
+  /** Centre the text horizontally. */
+  center?: boolean;
+  /** Override the baseline of the title. */
+  titleY?: number;
+}
+const { x, y, w, h, tag, tagRight, title, say, lines = [], mono, tone, state, k, center, titleY } = Astro.props;
+const tx = center ? x + w / 2 : x + 16;
+const anchor = center ? "middle" : "start";
+let cursor = y;
+const tagY = tag || tagRight ? (cursor += 24) : cursor;
+const headY = title || say ? (titleY ?? (cursor += tag || tagRight ? 24 : say ? 28 : 26)) : cursor;
+if (titleY) cursor = titleY;
+const lineYs = lines.map(() => (cursor += mono ? 20 : 19));
+---
+
+<g class="d-node" data-tone={tone} data-state={state} data-key={k}>
+  <rect class="d-box" x={x} y={y} width={w} height={h} rx="3" />
+  {tag && <text class:list={["d-tag", tone === "accent" && "d-accent"]} x={tx} y={tagY} text-anchor={anchor}>{tag}</text>}
+  {tagRight && <text class="d-tag" x={x + w - 16} y={tagY} text-anchor="end">{tagRight}</text>}
+  {title && <text class="d-title" x={tx} y={headY} text-anchor={anchor}>{title}</text>}
+  {say && <text class="d-say" x={tx} y={headY} text-anchor={anchor}>{say}</text>}
+  {lines.map((line, i) => <text class={mono ? "d-mono" : "d-sub"} x={tx} y={lineYs[i]} text-anchor={anchor}>{line}</text>)}
+  <slot />
+</g>

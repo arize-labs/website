@@ -36,7 +36,24 @@
 
   /* Page markings: the margin dot ground and the gutter rulers. */
   --dot: color-mix(in srgb, var(--fg) 16%, transparent);
+  --dot-ground: radial-gradient(circle at center, var(--dot) 0 1px, transparent 1.4px);
+  --dot-pitch: 24px;
   --marking-opacity: 0.14;
+
+  /* Figures (diagrams and charts in posts). Lines, fills and textures that
+     are drawn rather than read; text inside figures uses the text tokens. */
+  --fig-ground: var(--surface);
+  --fig-zone: color-mix(in srgb, var(--fg) 3%, transparent);
+  /* The same tint, opaque, so the dot ground stops at a zone's edge. */
+  --fig-zone-solid: color-mix(in srgb, var(--fg) 3%, var(--fig-ground));
+  /* Figures get a fainter dot than the page margins, so it stays behind the content. */
+  --fig-dot: color-mix(in srgb, var(--fg) 8%, transparent);
+  --fig-dot-ground: radial-gradient(circle at center, var(--fig-dot) 0 0.9px, transparent 1.3px);
+  --fig-code: color-mix(in srgb, var(--fg) 5%, var(--surface));
+  --fig-line: var(--rule);
+  --fig-line-strong: color-mix(in srgb, var(--fg) 38%, var(--surface));
+  --fig-texture: color-mix(in srgb, var(--fg) 55%, transparent);
+  --fig-accent-soft: color-mix(in srgb, var(--accent) 14%, var(--surface));
 
   /* Type */
   --font-sans: "Urbanist Variable", "Urbanist", system-ui, sans-serif;
@@ -60,8 +77,7 @@
 
   /* Layout */
   --content-max: 1084px;
-  /* The outer frame: the gutter rulers' lines, which the header also aligns
-     to. 1400px apart, centred, holding --frame-edge from a narrower window. */
+  /* The outer frame: the gutter rulers' lines. 1400px apart, centred, holding --frame-edge from a narrower window. */
   --frame-max: 1400px;
   --frame-edge: 40px;
   --frame-inset: max(var(--frame-edge), (100% - var(--frame-max)) / 2);
@@ -94,6 +110,7 @@
   --card: rgba(255, 255, 255, 0.045);
   --card-solid: color-mix(in srgb, var(--bg), #fff 4.5%);
   --dot: color-mix(in srgb, var(--fg) 13%, transparent);
+  --fig-dot: color-mix(in srgb, var(--fg) 6%, transparent);
   --marking-opacity: 0.12;
   color-scheme: dark;
 }
@@ -110,6 +127,7 @@
     --card: rgba(255, 255, 255, 0.045);
     --card-solid: color-mix(in srgb, var(--bg), #fff 4.5%);
     --dot: color-mix(in srgb, var(--fg) 13%, transparent);
+    --fig-dot: color-mix(in srgb, var(--fg) 6%, transparent);
     --marking-opacity: 0.12;
     color-scheme: dark;
   }

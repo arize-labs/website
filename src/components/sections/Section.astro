@@ -29,6 +29,10 @@ const headingId = id && heading ? `${id}-heading` : undefined;
 
 <style>
   .section { padding-top: var(--space-section); }
+  /* A link to #section skips the spacing above the heading (it belongs to the
+     previous section), so the heading lands just under the sticky header and
+     nothing of the section before shows. */
+  .section[id] { scroll-margin-top: calc(var(--space-6) - var(--space-section)); }
   .section-header {
     display: flex;
     align-items: end;

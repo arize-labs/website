@@ -1,0 +1,105 @@
+---
+import Figure from "../../figure/Figure.astro";
+import Diagram from "../../figure/diagram/Diagram.astro";
+import Zone from "../../figure/diagram/Zone.astro";
+import Node from "../../figure/diagram/Node.astro";
+import Wire from "../../figure/diagram/Wire.astro";
+---
+
+<Figure
+  title="The tool calling loop"
+  width="wide"
+  ground="dots"
+  scene="tool-calling-loop"
+  status="One question, two model calls. Every tool call costs a full round trip and another read of the whole conversation."
+>
+  <Diagram
+    id="tool-calling-loop"
+    height={432}
+    label="The tool calling loop. A user asks what 2 plus 3 is. The model's first call sees the question and the tool definitions and emits a tool call to a calculator. The harness runs the calculator, which returns 5. The model's second call sees everything again plus the result, and answers the user. The loop repeats whenever the model asks for another tool."
+  >
+    <Zone x={0} y={0} w={1032} h={108} tag="User" />
+    <Zone x={0} y={128} w={1032} h={176} tag="Agent loop" note="the harness calls the model until it answers without asking for a tool" noteX={330} noteY={150} />
+    <Zone x={0} y={324} w={1032} h={108} tag="Tools" note="run by the harness, never by the model" noteX={668} noteY={418} />
+
+    <Wire k="w-loop" points={[[728, 216], [304, 216]]} state="idle" label="Another tool call? The loop runs again" />
+    <Wire k="w-ask" points={[[180, 92], [180, 160]]} />
+    <Wire k="w-call" points={[[180, 272], [180, 386], [392, 386]]} label={'calculator("2 + 3")'} code />
+    <Wire k="w-result" points={[[640, 386], [852, 386], [852, 272]]} tone="accent" label="result: 5" code />
+    <Wire k="w-reply" points={[[852, 160], [852, 92]]} />
+
+    <Node k="ask" x={56} y={38} w={248} h={56} say="What's 2 + 3?" lines={["the user's message"]} />
+    <Node k="answer" x={728} y={38} w={248} h={56} say="It is 5." lines={["the assistant's reply"]} />
+
+    <Node k="call-1" x={56} y={160} w={248} h={112} tag="Model" tagRight="Call 1" lines={["reads the question", "and every tool definition"]}>
+      <text class="d-mono" x={72} y={252} data-key="out-1">→ calculator("2 + 3")</text>
+    </Node>
+    <Node k="call-2" x={728} y={160} w={248} h={112} tag="Model" tagRight="Call 2" lines={["reads everything above,", "plus the tool result"]}>
+      <text class="d-mono" x={744} y={252} data-key="out-2">→ answers, no tool needed</text>
+    </Node>
+
+    <Node k="tool" x={392} y={356} w={248} h={60} tag="Calculator" tagRight="Tool">
+      <text class="d-mono" x={408} y={402} data-key="tool-out">2 + 3 = <tspan class="d-accent">5</tspan></text>
+      <text class="d-sub" x={408} y={402} data-key="tool-idle" data-off>waiting for a call</text>
+    </Node>
+  </Diagram>
+  <Fragment slot="caption">The model never runs a tool. It asks the harness to, then reads the result on its next call.</Fragment>
+</Figure>
+
+<script>
+  import { defineScene } from "../../figure/motion";
+
+  const WIRES = ["w-ask", "w-call", "w-result", "w-reply"];
+  const N = 5;
+
+  defineScene("tool-calling-loop", {
+    setup(s) {
+      s.hide(["out-1", "out-2", "tool-out"]);
+      s.show("tool-idle");
+      s.state(["call-1", "tool", "call-2", "answer"], "dim");
+      s.state(WIRES, "idle");
+      s.caption("One question, two model calls. Watch where each step runs.");
+    },
+    async play(s) {
+      await s.wait(700);
+
+      s.caption("The user asks. The harness sends the question to the model with the definition of every available tool.", 1, N);
+      s.state("ask", "active");
+      s.state("w-ask", "on");
+      await s.stream("w-ask", { kind: "call" });
+      s.state("ask", null);
+      s.state("call-1", "active");
+      await s.wait(900);
+
+      s.caption("Call 1. The model can't do arithmetic reliably, so instead of answering it emits a tool call.", 2, N);
+      s.show("out-1");
+      await s.wait(1100);
+      s.state("w-ask", null);
+      s.state("w-call", "on");
+      await s.stream("w-call", { kind: "call", ms: 1000 });
+      s.state("call-1", null);
+      s.state("tool", "active");
+      s.hide("tool-idle");
+      s.show("tool-out");
+      s.caption("The harness runs the calculator. The model isn't involved; it's waiting for its next call.", 3, N);
+      await s.wait(1500);
+
+      s.state("w-call", null);
+      s.state("w-result", "accent");
+      s.caption("The result is appended to the conversation, and the harness calls the model again.", 4, N);
+      await s.stream("w-result", { kind: "result", ms: 1000 });
+      s.state("tool", null);
+      s.state("call-2", "active");
+      await s.wait(900);
+      s.show("out-2");
+      await s.wait(1200);
+
+      s.caption("Call 2 rereads everything so far, including the result, and this time answers instead of asking for a tool.", 5, N);
+      s.state("w-reply", "on");
+      await s.stream("w-reply", { kind: "call" });
+      s.state("call-2", null);
+      s.state("answer", "active");
+      await s.wait(1600);
+    },
+  });
+</script>

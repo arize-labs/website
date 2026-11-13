@@ -5,10 +5,13 @@ pubDate: 2026-09-28
 updatedDate: 2026-09-29
 authors: [elizabeth-hutton]
 tags: [evals, llm-as-a-judge, jev, phoenix]
-art: signal
+art: verdicts
 ---
 
-import Embed from "../../components/Embed.astro";
+import DropInVsNative from "../../components/figures/jev/DropInVsNative.astro";
+import ChangedAnswerRate from "../../components/figures/jev/ChangedAnswerRate.astro";
+import AccuracyByProbability from "../../components/figures/jev/AccuracyByProbability.astro";
+import WaveringByUncertainty from "../../components/figures/jev/WaveringByUncertainty.astro";
 
 Nobody agrees yet on what to call Jev, but almost everyone agrees it's one of the most exciting model releases this month. It reads natural language like an LLM, but instead of generating text it returns a probability for each label. That matters because most [LLM judges](https://arize.com/guides/llm-as-a-judge/) are already classifiers in disguise: we force their answers into a fixed set of labels, then validate them with the same metrics we'd use for any classifier.
 
@@ -77,7 +80,7 @@ Drop-in is how phoenix-evals runs Jev today, treating it like any other LLM. I w
 
 Averaged across the 10 evaluators, Jev scored 98.3% accuracy both as a drop-in and native, and none of the per-task differences between the two was significant. So from here on, "Jev" means the drop-in setup, since that's how phoenix-evals runs it.
 
-<Embed src="https://arize.com/wp-content/uploads/2026/09/jev-chart-drop-in-vs-native.html" title="Native minus drop-in accuracy, by task" height={540} />
+<DropInVsNative />
 
 The differences that did show up follow a pattern. Native's biggest gain, 7.1 points, came on completeness, which asks the judge to check every request in a conversation averaging around 1,950 tokens.
 
@@ -87,7 +90,7 @@ Pulling the data out of that much instruction text seems to help. Its losses on 
 
 A judge that returns a different label for the same input moves your eval scores with nothing in your app changing. Here, a judge changed its answer when at least one of an example's ten runs disagreed with the rest.
 
-<Embed src="https://arize.com/wp-content/uploads/2026/09/jev-chart-changed-answer-rate.html" title="Share of examples where the judge changed its answer across ten runs" height={540} />
+<ChangedAnswerRate />
 
 Jev changed its answer on 0.97% of examples as a drop-in and 0.19% native, the lowest of any judge. Comparing example by example, drop-in Jev was significantly steadier than three of the five LLMs, including GPT-5 nano and Haiku 4.5, and level with Gemini 3.8 Flash and Opus 5.
 
@@ -99,7 +102,7 @@ Jev returns a probability with every label, so the first thing I checked was whe
 
 On drop-in Jev's correct answers, the median probability on the chosen label was 1.00. On its wrong answers, it was 0.71.
 
-<Embed src="https://arize.com/wp-content/uploads/2026/09/jev-chart-accuracy-by-probability.html" title="How often Jev was right, by the probability it gave its answer" height={520} />
+<AccuracyByProbability />
 
 All 3,561 runs where Jev put at least 99% on its answer were correct. Below 70%, it was right only 73% of the time. As a detector for its own mistakes, the probability scores an ROC AUC of 0.95 as a drop-in and 0.99 native.
 
@@ -113,7 +116,7 @@ Jev was just as steady on its own mistakes, but its probability still told you i
 
 The same probabilities also point at examples that are hard for everyone. I compared Jev's uncertainty with whether any of the five LLM judges changed its answer on the same example across ten runs. I measured Jev's uncertainty as entropy. Zero bits means all its probability is on one label, and one bit means a coin flip.
 
-<Embed src="https://arize.com/wp-content/uploads/2026/09/jev-chart-llm-wavering.html" title="How often an LLM judge wavered, by how uncertain Jev was" height={680} />
+<WaveringByUncertainty />
 
 On the 306 examples where Jev was nearly certain, an LLM judge wavered on 3%. On the 24 where Jev was close to a coin flip, the LLMs wavered on 71%. The rank correlation is 0.47, and it survives a test that shuffles values within each evaluator, so it isn't just separating easy evaluators from hard ones.
 

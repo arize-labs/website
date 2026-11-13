@@ -1,0 +1,60 @@
+---
+import Figure from "../../figure/Figure.astro";
+import Diagram from "../../figure/diagram/Diagram.astro";
+import Zone from "../../figure/diagram/Zone.astro";
+import Wire from "../../figure/diagram/Wire.astro";
+
+/** What's under test, along the x axis, and the eval inputs, up the y axis. */
+const TESTED = ["prompt", "tools", "security", "orchestration", "context mgmt", "environment", "infra", "self-reflection"];
+const INPUTS = ["input / output", "reference", "full trajectory", "sandboxes", "repetitions", "ops metrics", "change history"];
+
+const OX = 150, OY = 410, RIGHT = 1016;
+const colW = (RIGHT - OX) / TESTED.length;
+const rowH = 54;
+const colX = (i: number) => OX + (i + 0.5) * colW;
+const rowY = (r: number) => OY - (r + 0.5) * rowH;
+
+/**
+ * Each scope covers the first `cols` of what's under test and the first
+ * `rows` of the inputs, so every scope contains the ones before it.
+ */
+const scopes = [
+  { tag: "Fully autonomous agents", note: "does it get better over time?", cols: 8, rows: 7, tone: "accent" as const },
+  { tag: "Harness", note: "does the system work reliably?", cols: 7, rows: 6 },
+  { tag: "Agent", note: "did it make the right decisions?", cols: 5, rows: 4 },
+  { tag: "LLM", note: "is the output correct?", cols: 3, rows: 2 },
+].map((s) => {
+  const x = OX + 8, top = OY - s.rows * rowH + 6;
+  return { ...s, x, y: top, w: s.cols * colW - 14, h: OY - 8 - top };
+});
+---
+
+<Figure title="The expanding surface area of agent evals" width="wide" ground="dots">
+  <Diagram
+    id="eval-surface-area"
+    height={486}
+    label="A chart of nested scopes. The x axis is what's under test: prompt, tools, security, orchestration, context management, environment, infrastructure and self-reflection. The y axis is the eval inputs: input and output, reference, full trajectory, sandboxes, repetitions, ops metrics and change history. LLM evals cover prompts to security with input/output and references, and ask whether the output is correct. Agent evals extend to context management and sandboxes, and ask whether it made the right decisions. Harness evals extend to infrastructure and ops metrics, and ask whether the system works reliably. Fully autonomous agents cover everything, including self-reflection and change history, and ask whether it gets better over time."
+  >
+    {scopes.map((s) => <Zone x={s.x} y={s.y} w={s.w} h={s.h} tag={s.tag} note={s.note} edge="dashed" tone={s.tone} fill={s.tone ? "solid" : "tint"} />)}
+
+    <Wire points={[[OX, OY], [OX, 8]]} />
+    <Wire points={[[OX, OY], [RIGHT + 12, OY]]} />
+    {INPUTS.map((label, r) => (
+      <>
+        <path class="d-rule" d={`M${OX - 5},${rowY(r)}H${OX}`} />
+        <text class="d-sub" x={OX - 14} y={rowY(r) + 4} text-anchor="end">{label}</text>
+      </>
+    ))}
+    {TESTED.map((label, i) => (
+      <>
+        <path class="d-rule" d={`M${colX(i)},${OY}V${OY + 5}`} />
+        <text class="d-sub" x={colX(i)} y={OY + 26} text-anchor="middle">{label}</text>
+      </>
+    ))}
+    <text class="d-tag" x={24} y={OY / 2} text-anchor="middle" transform={`rotate(-90 24 ${OY / 2})`}>Eval inputs →</text>
+    <text class="d-tag" x={(OX + RIGHT) / 2} y={OY + 64} text-anchor="middle">What's under test →</text>
+  </Diagram>
+  <Fragment slot="caption">
+    Each level of autonomy widens what an eval has to cover, and what it needs as input. Each scope contains the ones inside it.
+  </Fragment>
+</Figure>

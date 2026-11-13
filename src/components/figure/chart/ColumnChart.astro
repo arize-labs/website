@@ -1,0 +1,66 @@
+---
+/**
+ * Vertical bars over ordered bins, with optional interval whiskers and a
+ * value above chosen bars. Each bin's x label can carry a second, dimmer
+ * line (a count).
+ */
+export interface Bin {
+  label: string;
+  sub?: string;
+  value: number;
+  lo?: number;
+  hi?: number;
+  /** Shown above the bar (or its whisker). */
+  display?: string;
+  tone?: "muted";
+  tip?: string;
+}
+export interface Props {
+  bins: Bin[];
+  /** Top of the y axis. */
+  max: number;
+  yTicks: number[];
+  yFormat?: (v: number) => string;
+  xTitle?: string;
+  height?: number;
+}
+const { bins, max, yTicks, yFormat = String, xTitle, height = 240 } = Astro.props;
+const pos = (v: number) => (v / max) * 100;
+---
+
+<div class="ch">
+  <div class="ch-cols" style={`--h: ${height}px; --n: ${bins.length}`}>
+    <div class="ch-yaxis" aria-hidden="true">
+      {yTicks.map((t) => <span class="ch-num" style={`bottom: ${pos(t)}%`}>{yFormat(t)}</span>)}
+    </div>
+    <div class="ch-colplot">
+      {yTicks.filter((t) => t > 0).map((t) => <span class="ch-hline" aria-hidden="true" style={`bottom: ${pos(t)}%`}></span>)}
+      <div class="ch-colgrid">
+        {bins.map((b, i) => (
+          <div
+            class="ch-col"
+            data-tone={b.tone}
+            data-grow
+            tabindex="0"
+            data-tip={b.tip}
+            aria-label={b.tip?.replaceAll("\n", ", ") ?? `${b.label}: ${b.display ?? b.value}`}
+            style={`--i: ${i}; --v: ${pos(b.value)}; --lo: ${pos(b.lo ?? b.value)}; --hi: ${pos(b.hi ?? b.value)}; --top: ${pos(Math.max(b.value, b.hi ?? 0))}`}
+          >
+            <span class="ch-colbar"></span>
+            {b.lo !== undefined && b.hi !== undefined && <span class="ch-whisker"></span>}
+            {b.display && <span class="ch-colval ch-num">{b.display}</span>}
+          </div>
+        ))}
+      </div>
+    </div>
+    <div class="ch-xlabels" aria-hidden="true">
+      {bins.map((b) => (
+        <div>
+          <span class="ch-num">{b.label}</span>
+          {b.sub && <span class="ch-sub">{b.sub}</span>}
+        </div>
+      ))}
+    </div>
+    {xTitle && <p class="ch-axis-title">{xTitle}</p>}
+  </div>
+</div>

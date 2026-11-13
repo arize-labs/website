@@ -10,8 +10,8 @@ const groups: [string, Credit[]][] = [
 
 <PageLayout
   heading="Credits"
-  eyebrow="Colophon"
   intro="Work by others that this site is built with, and the licences it is used under."
+  width="prose"
 >
   <div class="credits">
     {groups.map(([heading, items]) => (
@@ -36,7 +36,7 @@ const groups: [string, Credit[]][] = [
 </PageLayout>
 
 <style>
-  .credits { display: grid; gap: var(--space-8); max-width: var(--prose-max); padding-bottom: var(--space-section); }
+  .credits { display: grid; gap: var(--space-8); }
   h2 { margin-bottom: var(--space-4); }
   ul { display: grid; margin: 0; padding: 0; list-style: none; }
   li { display: grid; gap: var(--space-1); padding: var(--space-5) 0; border-top: 1px solid var(--rule); }

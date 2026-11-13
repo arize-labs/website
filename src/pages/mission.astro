@@ -1,27 +1,23 @@
 ---
 import { getEntry, render } from "astro:content";
 import PageLayout from "../layouts/PageLayout.astro";
-import FormattedDate from "../components/FormattedDate.astro";
 
 // Copy lives in src/content/pages/mission.md.
 const page = await getEntry("pages", "mission");
 if (!page) throw new Error("Missing src/content/pages/mission.md");
-const { title, description, eyebrow, updatedDate } = page.data;
+const { title, description } = page.data;
 const { Content } = await render(page);
 ---
 
-<PageLayout heading={title} intro={description} eyebrow={eyebrow}>
+<PageLayout heading={title} intro={description} width="prose">
   <div class="prose manifesto">
     <Content />
-    {updatedDate && (
-      <p class="eyebrow updated">Last updated <FormattedDate date={updatedDate} /></p>
-    )}
   </div>
 </PageLayout>
 
 <style>
   /* Each `##` in the Markdown is a principle, numbered 01, 02, 03. */
-  .manifesto { counter-reset: principle; padding-bottom: var(--space-section); }
+  .manifesto { counter-reset: principle; }
   .manifesto :global(h2) {
     counter-increment: principle;
     margin-top: var(--space-8);
@@ -38,7 +34,6 @@ const { Content } = await render(page);
   }
   .manifesto :global(h2 + p) { color: var(--soft); }
   .manifesto :global(hr) { margin: var(--space-8) 0 var(--space-6); }
-  .updated { margin-top: var(--space-7); }
 
   @media (max-width: 720px) {
     .manifesto :global(h2) { margin-top: var(--space-7); }

@@ -9,7 +9,7 @@ art: sandbox
 ---
 
 import { Image } from "astro:assets";
-import Embed from "../../components/Embed.astro";
+import TrialSandboxes from "../../components/figures/harbor/TrialSandboxes.astro";
 import harborPhoenixExperiment from "../../assets/blog/harbor-phoenix-experiment.png";
 
 ## Why is agent benchmarking so hard?
@@ -24,12 +24,7 @@ Expanding that suite meant rebuilding or mocking more and more parts of the syst
 
 [Harbor](https://docs.harborframework.com/tasks/overview) is the open-source framework behind coding-agent benchmarks like Terminal-Bench, but you don't have to work at an AI lab to use it. Give it a task, an environment with your application and data, and a verifier to check success. Harbor runs each attempt in a fresh sandbox, using local Docker or your choice of supported cloud sandbox providers.
 
-<Embed
-  src="/figures/harbor-trial-sandboxes.html"
-  title="Per-trial agent sandboxes"
-  height={720}
-  caption="Each trial gives the agent a fresh sandbox. After the agent finishes, a verifier runs tests to produce rewards."
-/>
+<TrialSandboxes />
 
 For PXI, this meant running the real agent endpoint against a Phoenix server pre-seeded with [traces](https://arize.com/docs/phoenix/tracing/concepts-tracing/what-are-traces). We could test what PXI did with real tool results and inspect the database afterwards.
 

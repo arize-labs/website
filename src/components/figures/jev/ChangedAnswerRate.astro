@@ -1,0 +1,54 @@
+---
+import Figure from "../../figure/Figure.astro";
+import BarList from "../../figure/chart/BarList.astro";
+import VariantControl from "../../figure/chart/VariantControl.astro";
+import { DATA, JUDGES, TASKS, TASK_NAME, TOTAL_N, cell, f1, type Task } from "./data";
+
+const variants = [{ id: "all", label: "All evaluators" }, ...TASKS.map((t) => ({ id: t, label: TASK_NAME[t] }))];
+
+const panel = (t: Task | "all") => {
+  const digits = t === "all" ? 2 : 1;
+  const rows = JUDGES.map((j) => {
+    const src = t === "all" ? DATA.pooled[j.id] : cell(t, j.id);
+    return { j, v: src.flip, acc: src.acc };
+  }).sort((a, b) => a.v - b.v);
+  const top = Math.max(10, Math.ceil(Math.max(...rows.map((r) => r.v)) / 5) * 5);
+  const step = top > 15 ? 5 : 2;
+  const ticks = Array.from({ length: Math.floor(top / step) + 1 }, (_, i) => i * step);
+  return {
+    max: top,
+    ticks,
+    minor: ticks.filter((_, i) => i % 2 === 1),
+    rows: rows.map((r) => ({
+      label: r.j.name,
+      value: r.v,
+      display: `${r.v.toFixed(digits)}%`,
+      tone: "jev" in r.j ? ("accent" as const) : undefined,
+      tip: [
+        `${r.j.name} · ${t === "all" ? "all evaluators" : TASK_NAME[t]}`,
+        `${r.v.toFixed(digits)}% of examples changed label`,
+        `${f1(r.acc)}% accurate`,
+        `${t === "all" ? TOTAL_N : DATA.n[t]} examples × 10 runs`,
+      ].join("\n"),
+    })),
+  };
+};
+---
+
+<Figure title="Share of examples where the judge changed its answer across ten runs">
+  <VariantControl label="Evaluator" options={variants} />
+  <div data-variants>
+    {variants.map((v, i) => {
+      const p = panel(v.id as Task | "all");
+      return (
+        <div data-variant={v.id} hidden={i !== 0}>
+          <BarList rows={p.rows} max={p.max} ticks={p.ticks} minor={p.minor} tickFormat={(t) => `${t}%`} />
+        </div>
+      );
+    })}
+  </div>
+  <Fragment slot="caption">
+    Zero means every run returned the same label. Hover or focus a bar for the evaluator's suite size and the judge's
+    accuracy on it.
+  </Fragment>
+</Figure>

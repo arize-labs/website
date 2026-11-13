@@ -1,0 +1,52 @@
+---
+/**
+ * Point estimates with intervals on a shared axis, one labelled row each
+ * (a forest plot). Points right of zero take the accent, left of zero ink,
+ * exactly zero a hollow ring.
+ */
+export interface Row {
+  label: string;
+  value: number;
+  lo: number;
+  hi: number;
+  /** Text after the interval; omitted when empty. */
+  display?: string;
+  tip?: string;
+}
+export interface Props {
+  rows: Row[];
+  domain: [number, number];
+  ticks: number[];
+  /** Ticks dropped on narrow screens. */
+  minor?: number[];
+  tickFormat?: (v: number) => string;
+  /** Direction labels under the axis: [left, right]. */
+  ends?: [string, string];
+}
+const { rows, domain, ticks, minor = [], tickFormat = String, ends } = Astro.props;
+const pos = (v: number) => ((v - domain[0]) / (domain[1] - domain[0])) * 100;
+---
+
+<div class="ch">
+  <div class="ch-rows">
+    <div class="ch-plot">
+      <div class="ch-grid" aria-hidden="true">
+        {ticks.map((t) => <span class="ch-gridline" data-zero={t === 0 ? "" : undefined} style={`left: ${pos(t)}%`}></span>)}
+      </div>
+      {rows.map((r, i) => (
+        <div class="ch-row" data-grow tabindex="0" data-tip={r.tip} aria-label={r.tip?.replaceAll("\n", ", ") ?? `${r.label}: ${r.value}`} style={`--i: ${i}`}>
+          <span class="ch-label">{r.label}</span>
+          <span class="ch-track" style={`--v: ${pos(r.value)}; --lo: ${pos(r.lo)}; --hi: ${pos(r.hi)}`}>
+            <span class="ch-ci"></span>
+            <span class="ch-pt" data-sign={r.value > 0 ? "pos" : r.value < 0 ? "neg" : "zero"}></span>
+            {r.display && <span class="ch-val ch-num">{r.display}</span>}
+          </span>
+        </div>
+      ))}
+    </div>
+    <div class="ch-axis" aria-hidden="true">
+      {ticks.map((t) => <span class="ch-tick ch-num" data-minor={minor.includes(t) ? "" : undefined} style={`left: ${pos(t)}%`}>{tickFormat(t)}</span>)}
+    </div>
+    {ends && <p class="ch-ends" aria-hidden="true"><span>{ends[0]}</span><span>{ends[1]}</span></p>}
+  </div>
+</div>

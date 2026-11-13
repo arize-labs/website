@@ -30,7 +30,7 @@ const tags = await getTags();
       </ul>
     </nav>
   )}
-  <PostList posts={page.data} />
+  <PostList posts={page.data} featured={page.currentPage === 1 ? 3 : 0} />
   <Pagination page={page} />
 </PageLayout>
 

@@ -1,0 +1,43 @@
+---
+/**
+ * A region of the system (the user, a sandbox, a server): a faint tint with
+ * registration ticks on its corners and a mono caps tag. `edge` swaps the
+ * ticks for a hairline or a dashed boundary (containers, sandboxes).
+ */
+export interface Props {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  tag?: string;
+  /** Lower-case note that follows the tag on the same line. */
+  note?: string;
+  edge?: "ticks" | "line" | "dashed";
+  tone?: "accent";
+  /** tint: translucent, so zones nested inside one another darken as they nest. */
+  fill?: "solid" | "tint";
+  k?: string;
+  /** Where the note starts, when the tag is long; defaults to after the tag. */
+  noteX?: number;
+  /** Baseline of the note, to move it clear of wires; defaults to the tag's line. */
+  noteY?: number;
+}
+const { x, y, w, h, tag, note, edge = "ticks", tone, fill, k, noteX, noteY } = Astro.props;
+const t = 10;
+const ticks = [
+  `M${x},${y + t}V${y}H${x + t}`,
+  `M${x + w - t},${y}H${x + w}V${y + t}`,
+  `M${x + w},${y + h - t}V${y + h}H${x + w - t}`,
+  `M${x + t},${y + h}H${x}V${y + h - t}`,
+].join("");
+// Mono caps at 10.5px with 0.08em tracking run about 7.2 units a character.
+const nx = noteX ?? x + 16 + (tag ? tag.length * 7.2 + 12 : 0);
+---
+
+<g class="d-zone" data-edge={edge} data-tone={tone} data-fill={fill} data-key={k}>
+  <rect class="d-zone-fill" x={x} y={y} width={w} height={h} rx={edge === "ticks" ? 0 : 4} />
+  {edge === "ticks" && <path class="d-zone-ticks" d={ticks} />}
+  {tag && <text class:list={["d-tag", tone === "accent" && "d-accent"]} x={x + 16} y={y + 26}>{tag}</text>}
+  {note && <text class="d-sub" x={nx} y={noteY ?? y + 26}>{note}</text>}
+  <slot />
+</g>

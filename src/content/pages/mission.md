@@ -1,11 +1,9 @@
 ---
-# Placeholder copy. Edit freely: the title, description and eyebrow render in
-# the page header, and the body below renders as the manifesto. Each `##`
+# Placeholder copy. Edit freely: the title and description render in the
+# page header, and the body below renders as the manifesto. Each `##`
 # heading becomes a numbered principle.
 title: Why Arize Labs
 description: On a mission to make AI work for humanity.
-eyebrow: Mission
-updatedDate: 2026-11-12
 ---
 
 AI engineering is still young. The tools are immature and the best practices

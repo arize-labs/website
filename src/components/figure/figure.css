@@ -1,0 +1,400 @@
+/*
+ * Figures: the frame, the diagram primitives (SVG, classes prefixed d-) and
+ * the chart primitives (HTML, prefixed ch-). Loaded by Figure.astro, so it
+ * only ships on pages that have a figure. Every value is a token from
+ * tokens.css, except sizes inside an SVG viewBox, which are diagram units
+ * (one unit is one CSS pixel when a wide diagram is shown at full width).
+ */
+
+/* ---- Frame ------------------------------------------------------------ */
+
+.prose { counter-reset: fig; }
+
+.fig { counter-increment: fig; }
+.prose > .fig { margin-block: var(--space-7); }
+
+/* Wide figures leave the reading column for the content column. */
+.fig[data-width="wide"] {
+  --fig-w: min(var(--content-max), 100vw - 2 * var(--gutter));
+  width: var(--fig-w);
+  max-width: none;
+  margin-inline: calc((100% - var(--fig-w)) / 2);
+}
+
+.fig-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-3);
+}
+.fig-title {
+  font: 600 var(--text-micro) / 1.4 var(--font-mono);
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  color: var(--fg);
+  text-wrap: balance;
+}
+.fig-num::before {
+  content: "Fig. " counter(fig, decimal-leading-zero);
+  margin-right: 1.2ch;
+  color: var(--dim);
+}
+.fig-controls { display: flex; align-items: center; gap: var(--space-2); }
+.fig-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--rule);
+  background: var(--fig-ground);
+  color: var(--soft);
+  cursor: pointer;
+  transition: color 150ms, border-color 150ms;
+}
+.fig-btn[hidden] { display: none; }
+.fig-btn:hover { color: var(--fg); border-color: var(--fg); }
+.fig-btn svg { width: 14px; height: 14px; fill: currentColor; }
+.fig-btn[data-icon="play"] .i-pause, .fig-btn[data-icon="pause"] .i-play { display: none; }
+
+.fig-frame {
+  position: relative;
+  background: var(--fig-ground);
+  border: 1px solid var(--rule);
+}
+/* Registration crosses on the four corners, as on the page markings. */
+.fig-frame::before {
+  --c: linear-gradient(var(--fig-line-strong), var(--fig-line-strong));
+  content: "";
+  position: absolute;
+  inset: -6px;
+  pointer-events: none;
+  background:
+    var(--c) left 0 top 5.5px / 13px 1px, var(--c) left 5.5px top 0 / 1px 13px,
+    var(--c) right 0 top 5.5px / 13px 1px, var(--c) right 5.5px top 0 / 1px 13px,
+    var(--c) left 0 bottom 5.5px / 13px 1px, var(--c) left 5.5px bottom 0 / 1px 13px,
+    var(--c) right 0 bottom 5.5px / 13px 1px, var(--c) right 5.5px bottom 0 / 1px 13px;
+  background-repeat: no-repeat;
+}
+.fig-body { padding: var(--space-6); overflow-x: auto; }
+.fig-frame[data-ground="dots"] .fig-body {
+  background-image: var(--fig-dot-ground);
+  background-size: var(--dot-pitch) var(--dot-pitch);
+  background-position: center;
+}
+.fig-status {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  min-height: calc(2 * 1.5em + 2 * var(--space-3));
+  padding: var(--space-3) var(--space-6);
+  border-top: 1px solid var(--rule);
+  font-size: var(--text-small);
+  line-height: 1.5;
+  color: var(--soft);
+}
+.fig-step {
+  flex: none;
+  font: 500 var(--text-micro) / 1.4 var(--font-mono);
+  letter-spacing: var(--tracking-micro);
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+.fig-step:empty { display: none; }
+.fig figcaption { max-width: var(--prose-max); margin-top: var(--space-3); }
+
+@media (max-width: 720px) {
+  .fig-body { padding: var(--space-4); }
+  .fig-status { padding: var(--space-3) var(--space-4); }
+}
+
+/* Tooltip (one per page, positioned by behaviors.ts) */
+.fig-tip {
+  position: fixed;
+  z-index: 50;
+  max-width: 260px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-ink) 14%, transparent);
+  color: var(--soft);
+  font-size: 13px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 100ms;
+}
+.fig-tip[data-on] { opacity: 1; }
+.fig-tip b { display: block; margin-bottom: 2px; font-weight: 600; color: var(--fg); }
+.fig-tip span { display: block; }
+
+/* Controls inside a figure: a segmented toggle or a select. */
+.fig-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-5);
+}
+.fig-toolbar label, .fig-toolbar .eyebrow { color: var(--dim); }
+.fig-seg { display: inline-flex; border: 1px solid var(--rule); }
+.fig-seg button, .fig-select {
+  font: 500 var(--text-micro) / 1 var(--font-mono);
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+}
+.fig-seg button {
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--soft);
+  cursor: pointer;
+}
+.fig-seg button + button { border-left: 1px solid var(--rule); }
+.fig-seg button:hover { color: var(--fg); }
+.fig-seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.fig-select {
+  padding: 7px 28px 7px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  background: var(--fig-ground) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.3'/%3E%3C/svg%3E") no-repeat right 10px center / 9px;
+  color: var(--fg);
+  appearance: none;
+  cursor: pointer;
+}
+
+/* Legend (HTML, under a diagram or chart) */
+.fig-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: var(--space-5) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--soft);
+}
+.fig-legend li { display: flex; align-items: center; gap: var(--space-2); }
+.sw { flex: none; display: inline-block; width: 18px; height: 9px; }
+.sw-ink { background: var(--fg); }
+.sw-soft { background: var(--fig-line-strong); }
+.sw-accent { background: var(--accent); }
+.sw-dots { background: radial-gradient(circle, var(--fig-texture) 0.9px, transparent 1.2px) 0 0 / 3px 3px; box-shadow: inset 0 0 0 1px var(--fig-line); }
+.sw-hatch { background: repeating-linear-gradient(-45deg, var(--fig-line-strong) 0 1px, transparent 1px 4px); box-shadow: inset 0 0 0 1px var(--fig-line); }
+.sw-zone { background: var(--fig-zone); border: 1px dashed var(--fig-line-strong); height: 12px; }
+.sw-line { height: 0; border-top: 1.5px solid var(--fig-line-strong); }
+.sw-line-accent { height: 0; border-top: 1.5px solid var(--accent); }
+.sw-dashed { height: 0; border-top: 1.5px dashed var(--fig-line-strong); }
+.sw-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+
+/* ---- Diagram primitives (SVG) ----------------------------------------- */
+
+.d-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-width: var(--d-min, 0px);
+  overflow: visible;
+  font-family: var(--font-sans);
+}
+.d-svg text { fill: var(--fg); }
+.d-svg [data-key], .d-svg .d-node, .d-svg .d-wire { transition: opacity 400ms ease, fill 300ms ease, stroke 300ms ease; }
+.d-svg [data-off] { opacity: 0 !important; }
+.d-svg [data-state="dim"] { opacity: 0.32; }
+.d-svg text[data-state="hot"] { fill: var(--accent); }
+
+/* Text */
+.d-tag {
+  font: 500 10.5px var(--font-mono);
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+}
+.d-svg .d-tag { fill: var(--dim); }
+.d-svg .d-accent { fill: var(--accent); }
+.d-title { font-size: 15px; font-weight: 600; letter-spacing: -0.005em; }
+.d-say { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.d-svg .d-sub { font-size: 12.5px; fill: var(--soft); }
+.d-mono { font: 400 11.5px var(--font-mono); }
+.d-svg .d-dim { fill: var(--dim); }
+.d-code { font: 400 11.5px var(--font-mono); white-space: pre; }
+.d-svg .d-code .k { fill: var(--accent); }
+.d-svg .d-code .c { fill: var(--dim); }
+
+/* Zones: a region of the system, tinted, with registration ticks or a dashed edge */
+.d-zone-fill { fill: var(--fig-zone-solid); }
+/* A translucent zone, for scopes nested inside one another. */
+.d-zone[data-fill="tint"] .d-zone-fill { fill: var(--fig-zone); }
+.d-zone-ticks { fill: none; stroke: var(--fig-line-strong); stroke-width: 1; }
+.d-zone[data-edge="line"] .d-zone-fill { stroke: var(--fig-line); }
+.d-zone[data-edge="dashed"] .d-zone-fill { stroke: var(--fig-line-strong); stroke-dasharray: 4 4; }
+.d-zone[data-tone="accent"] .d-zone-fill { fill: color-mix(in srgb, var(--accent) 4%, var(--fig-ground)); stroke: color-mix(in srgb, var(--accent) 60%, transparent); }
+
+/* Nodes: one thing in the system */
+.d-box { fill: var(--fig-ground); stroke: var(--fig-line-strong); stroke-width: 1; transition: stroke 300ms, fill 300ms, stroke-width 300ms; }
+.d-node[data-tone="accent"] > .d-box { stroke: var(--accent); }
+.d-node[data-tone="ghost"] > .d-box { fill: var(--fig-zone-solid); stroke: var(--fig-line); stroke-dasharray: 3 3; }
+.d-node[data-state="active"] > .d-box { stroke: var(--fg); stroke-width: 1.5; }
+.d-node[data-state="hot"] > .d-box { stroke: var(--accent); stroke-width: 1.5; fill: var(--fig-accent-soft); }
+.d-node[data-state="done"] > .d-box { stroke: var(--fg); }
+
+/* Chips: a named tool or function */
+.d-chip rect { fill: var(--fig-ground); stroke: var(--fig-line); stroke-width: 1; transition: stroke 250ms, fill 250ms; }
+.d-chip text { font: 400 11.5px var(--font-mono); }
+.d-chip[data-tone="more"] rect { fill: transparent; stroke-dasharray: 3 3; }
+.d-svg .d-chip[data-tone="more"] text { fill: var(--dim); }
+.d-chip[data-state="lit"] rect { stroke: var(--fg); }
+.d-chip[data-state="hot"] rect { stroke: var(--accent); fill: var(--fig-accent-soft); }
+.d-svg .d-chip[data-state="packed"] { opacity: 0.4; }
+
+/* Wires: flow between things */
+.d-wire { --wire: var(--fig-line-strong); }
+.d-wire-line { fill: none; stroke: var(--wire); stroke-width: 1.25; transition: stroke 300ms; }
+.d-wire-head { fill: none; stroke: var(--wire); stroke-width: 1.25; stroke-linecap: round; stroke-linejoin: round; transition: stroke 300ms; }
+.d-wire[data-tone="accent"] { --wire: var(--accent); }
+.d-wire[data-state="idle"] .d-wire-line { stroke-dasharray: 3 4; }
+.d-wire[data-state="idle"] { opacity: 0.6; }
+.d-wire[data-state="on"] { --wire: var(--fg); }
+.d-wire[data-state="accent"] { --wire: var(--accent); }
+.d-wire[data-drawing] .d-wire-head, .d-wire[data-drawing] .d-wire-label { opacity: 0; }
+.d-wire-label rect { fill: var(--fig-ground); }
+.d-wire-label text { font: 500 10px var(--font-mono); letter-spacing: var(--tracking-micro); text-transform: uppercase; fill: var(--dim); }
+.d-wire-label text.d-wire-code { font: 400 11px var(--font-mono); letter-spacing: 0; text-transform: none; fill: var(--soft); }
+.d-wire[data-tone="accent"] .d-wire-label text, .d-wire[data-state="accent"] .d-wire-label text { fill: var(--accent); }
+.d-wire[data-state="on"] .d-wire-label text { fill: var(--fg); }
+
+/* Fills for blocks, meters and stacks */
+.d-fill-ink { fill: var(--fg); }
+.d-fill-soft { fill: var(--fig-line-strong); }
+.d-fill-accent { fill: var(--accent); }
+.d-fill-zone { fill: var(--fig-zone); }
+.d-fill-ground { fill: var(--fig-ground); stroke: var(--fig-line); }
+.d-fill-dots { fill: var(--d-dots); }
+.d-fill-hatch { fill: var(--d-hatch); }
+.d-pat-dot { fill: var(--fig-texture); }
+.d-pat-hatch { stroke: var(--fig-line-strong); stroke-width: 1; }
+.d-codebox { fill: var(--fig-code); }
+.d-rule { stroke: var(--fig-line); stroke-width: 1; }
+.d-rule-accent { stroke: var(--accent); stroke-width: 1.5; }
+.d-outline { fill: none; stroke: var(--fig-line); }
+.d-outline[data-tone="accent"] { stroke: var(--accent); }
+
+/* Tokens: blocks moving along wires (Scene.stream). Payload blocks keep a
+   fixed shade each, so a train reads as a run of data, not a spray. */
+.d-token--call { fill: var(--fig-ground); stroke: var(--fg); stroke-width: 1.5; }
+.d-token--result { fill: var(--accent); }
+.d-token--payload { fill: var(--fg); }
+.d-token--payload[data-shade="0"] { opacity: 0.78; }
+.d-token--payload[data-shade="1"] { opacity: 0.5; }
+.d-token--payload[data-shade="2"] { opacity: 0.28; }
+.d-flyer { pointer-events: none; }
+
+/* ---- Chart primitives (HTML) ------------------------------------------ */
+
+.ch { container-type: inline-size; font-size: var(--text-small); line-height: 1.4; font-variant-numeric: tabular-nums; }
+.ch-num { font: 400 12px / 1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.ch-axis-title { margin-top: var(--space-2); font-size: 13px; color: var(--soft); }
+.ch-axis-title b { font-weight: 500; color: var(--fg); }
+
+/* Rows: one mark per labelled row (bar lists, interval plots) */
+.ch-rows { --label-w: 168px; --pad-r: 64px; position: relative; }
+@container (max-width: 520px) { .ch-rows { --label-w: 112px; --pad-r: 48px; } }
+.ch-plot { position: relative; }
+.ch-grid { position: absolute; inset: 0 var(--pad-r) 0 var(--label-w); pointer-events: none; }
+.ch-gridline { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--fig-line); }
+.ch-gridline[data-zero] { background: var(--fig-line-strong); }
+.ch-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--label-w) 1fr;
+  align-items: center;
+  min-height: 34px;
+  outline-offset: -2px;
+}
+.ch-row:hover, .ch-row:focus-visible { background: linear-gradient(to right, transparent, var(--fig-zone) 20%, var(--fig-zone) 80%, transparent); }
+.ch-label { padding-right: var(--space-3); font-size: 13.5px; color: var(--soft); overflow-wrap: anywhere; }
+.ch-row[data-tone="accent"] .ch-label { font-weight: 600; color: var(--fg); }
+.ch-track { position: relative; height: 34px; margin-right: var(--pad-r); }
+.ch-axis { position: relative; height: 22px; margin: var(--space-1) var(--pad-r) 0 var(--label-w); }
+.ch-tick { position: absolute; top: 4px; transform: translateX(-50%); color: var(--dim); white-space: nowrap; }
+@container (max-width: 520px) { .ch-tick[data-minor] { display: none; } }
+.ch-ends { display: flex; justify-content: space-between; margin: var(--space-2) var(--pad-r) 0 var(--label-w); font-size: 12.5px; color: var(--dim); }
+.ch-ends span:first-child::before { content: "← "; }
+.ch-ends span:last-child::after { content: " →"; }
+
+/* Bars (horizontal) */
+.ch-bar {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 10px;
+  width: calc(var(--v) * 1%);
+  min-width: 2px;
+  margin-top: -5px;
+  border-radius: 0 2px 2px 0;
+  background: radial-gradient(circle, var(--fig-texture) 0.9px, transparent 1.2px) 0 0 / 3px 3px;
+  box-shadow: inset 0 0 0 1px var(--fig-line-strong);
+  transform-origin: left center;
+}
+.ch-row[data-tone="accent"] .ch-bar { background: var(--accent); box-shadow: none; }
+.ch-val { position: absolute; top: 50%; left: calc(var(--v) * 1%); margin: -0.5em 0 0 var(--space-2); color: var(--fg); }
+
+/* Intervals with a point estimate */
+.ch-ci { position: absolute; top: 50%; height: 2px; margin-top: -1px; left: calc(var(--lo) * 1%); width: calc((var(--hi) - var(--lo)) * 1%); min-width: 0; border-radius: 1px; background: var(--fig-line-strong); transform-origin: center; }
+.ch-pt { position: absolute; top: 50%; left: calc(var(--v) * 1%); width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--fg); box-shadow: 0 0 0 2px var(--fig-ground); }
+.ch-pt[data-sign="pos"] { background: var(--accent); }
+.ch-pt[data-sign="zero"] { background: var(--fig-ground); box-shadow: inset 0 0 0 1.5px var(--dim), 0 0 0 2px var(--fig-ground); }
+.ch-ci + .ch-pt + .ch-val { left: calc(var(--hi) * 1%); }
+
+/* Columns (vertical bars) */
+.ch-cols { --h: 240px; --y-w: 44px; display: grid; grid-template-columns: var(--y-w) 1fr; padding-top: var(--space-6); }
+.ch-yaxis { position: relative; height: var(--h); }
+.ch-yaxis .ch-num { position: absolute; right: var(--space-2); transform: translateY(50%); color: var(--dim); }
+.ch-colplot { position: relative; height: var(--h); border-bottom: 1px solid var(--fig-line-strong); }
+.ch-hline { position: absolute; left: 0; right: 0; height: 1px; background: var(--fig-line); }
+.ch-colgrid { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); }
+.ch-col { position: relative; outline-offset: -2px; }
+.ch-col:hover, .ch-col:focus-visible { background: linear-gradient(to top, var(--fig-zone), transparent); }
+.ch-colbar {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: min(64%, 96px);
+  height: calc(var(--v) * 1%);
+  translate: -50% 0;
+  border-top: 2px solid var(--accent);
+  background: var(--fig-accent-soft);
+  transform-origin: bottom center;
+}
+.ch-col[data-tone="muted"] .ch-colbar { background: radial-gradient(circle, var(--fig-texture) 0.9px, transparent 1.2px) 0 0 / 3px 3px; box-shadow: inset 0 0 0 1px var(--fig-line-strong); }
+.ch-whisker {
+  position: absolute;
+  left: 50%;
+  width: 11px;
+  bottom: calc(var(--lo) * 1%);
+  height: calc((var(--hi) - var(--lo)) * 1%);
+  translate: -50% 0;
+  border-block: 1.5px solid var(--fg);
+  background: linear-gradient(var(--fg), var(--fg)) center / 1.5px 100% no-repeat;
+}
+.ch-colval { position: absolute; left: 0; right: 0; bottom: calc(var(--top) * 1%); margin-bottom: var(--space-2); text-align: center; font-weight: 600; color: var(--fg); }
+.ch-xlabels { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); grid-column: 2; padding-top: var(--space-2); text-align: center; }
+.ch-xlabels span { display: block; }
+.ch-xlabels .ch-num { color: var(--soft); line-height: 1.5; }
+.ch-xlabels .ch-sub { font-size: 11.5px; color: var(--dim); }
+.ch-cols > .ch-axis-title { grid-column: 2; text-align: center; }
+@container (max-width: 520px) {
+  .ch-cols { --h: 200px; --y-w: 38px; }
+  .ch-xlabels .ch-num { font-size: 10.5px; }
+  .ch-xlabels .ch-sub { font-size: 10.5px; }
+}
+
+/* Entrances: marks grow in when the figure scrolls into view */
+.ch-bar, .ch-colbar, .ch-ci { transition: transform 750ms cubic-bezier(0.2, 0.8, 0.2, 1) calc(var(--i, 0) * 55ms); }
+.ch-pt, .ch-val, .ch-colval, .ch-whisker { transition: opacity 400ms ease calc(var(--i, 0) * 55ms + 350ms), transform 400ms ease calc(var(--i, 0) * 55ms + 350ms); }
+.fig[data-armed] [data-grow]:not([data-in]) .ch-bar, .fig[data-armed] [data-grow]:not([data-in]) .ch-ci { transform: scaleX(0); transition: none; }
+.fig[data-armed] [data-grow]:not([data-in]) .ch-colbar { transform: scaleY(0); transition: none; }
+.fig[data-armed] [data-grow]:not([data-in]) :is(.ch-pt, .ch-val, .ch-colval, .ch-whisker) { opacity: 0; transform: scale(0.6); transition: none; }

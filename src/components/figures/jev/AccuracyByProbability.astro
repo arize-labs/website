@@ -1,0 +1,23 @@
+---
+import Figure from "../../figure/Figure.astro";
+import ColumnChart from "../../figure/chart/ColumnChart.astro";
+import { DATA } from "./data";
+
+const bins = DATA.cal["jev-slot-in"].map((b) => {
+  const label = b.hi === 1 ? "≥ 0.99" : `${b.lo}–${b.hi}`;
+  return {
+    label,
+    sub: `${b.n.toLocaleString("en-US")} runs`,
+    value: b.acc,
+    display: `${b.acc === 100 ? 100 : b.acc.toFixed(1)}%`,
+    tip: `Probability ${label}\n${b.n.toLocaleString("en-US")} runs\n${b.acc}% correct`,
+  };
+});
+---
+
+<Figure title="How often Jev was right, by the probability it gave its answer">
+  <ColumnChart bins={bins} max={100} yTicks={[0, 25, 50, 75, 100]} yFormat={(v) => `${v}%`} xTitle="Jev's probability on the label it chose" />
+  <Fragment slot="caption">
+    Drop-in Jev, every run. Each bar is the share of runs in that probability band that matched the reference label.
+  </Fragment>
+</Figure>

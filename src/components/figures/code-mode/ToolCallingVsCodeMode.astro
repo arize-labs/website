@@ -1,0 +1,180 @@
+---
+import Figure from "../../figure/Figure.astro";
+import Diagram from "../../figure/diagram/Diagram.astro";
+import Zone from "../../figure/diagram/Zone.astro";
+import Node from "../../figure/diagram/Node.astro";
+import Wire from "../../figure/diagram/Wire.astro";
+import Code from "../../figure/diagram/Code.astro";
+import Legend from "../../figure/diagram/Legend.astro";
+
+const TOOLS = ["list_datasets", "get_dataset_examples", "update_examples"];
+const BAR_W = 474;
+/** Left context bar, finished: the window is full before the job is done. */
+const segs = [
+  { k: "l-seg1", w: 104, label: "datasets" },
+  { k: "l-seg2", w: 150, label: "every example" },
+  { k: "l-seg3", w: 70, label: "updates" },
+  { k: "l-segm", w: 150, label: "" },
+];
+let sx = 16;
+const left = segs.map((s) => ({ ...s, x: (sx += s.w) - s.w }));
+const PROGRAM = [
+  'datasets = «list_datasets»(project="support")',
+  "for ds in datasets:",
+  '    examples = «get_dataset_examples»(ds["id"])',
+  "    fixed = [redact_pii(e) for e in examples]",
+  '    «update_examples»(ds["id"], fixed)',
+  'return f"updated {len(datasets)} datasets"',
+];
+---
+
+<Figure
+  title="Direct tool calls compared with code mode"
+  width="wide"
+  ground="dots"
+  scene="calls-vs-code"
+  status="Same tools, same job. Tool calling spends the context window on intermediate results; code mode spends it on the answer."
+>
+  <Diagram
+    id="calls-vs-code"
+    height={432}
+    label="Tool calling compared with code mode on the same job: redacting PII across every support dataset. On the left, the model calls list_datasets, get_dataset_examples and update_examples one at a time, and every result lands in the context window, which fills up. On the right, the model sends one program to a sandbox; results shuttle between the sandbox and the same three tools, and only a one-line return value lands in context."
+  >
+    <!-- Tool calling -->
+    <Zone x={0} y={0} w={506} h={432} tag="Tool calling" note="every result passes through the model" />
+    <text class="d-mono d-dim" x={490} y={26} text-anchor="end" data-key="l-turn">turn 12</text>
+    <text class="d-sub" x={16} y={60}>context window</text>
+    <rect class="d-fill-ground" x={16} y={68} width={BAR_W} height={14} />
+    {left.map((s) => <rect class="d-fill-dots" x={s.x} y={68} width={s.w} height={14} data-key={s.k} />)}
+    {left.filter((s) => s.label).map((s, i) => <text class="d-mono d-dim" x={s.x + s.w / 2} y={102} text-anchor="middle" data-key={`l-lbl${i + 1}`}>{s.label}</text>)}
+    <g data-key="l-full">
+      <rect class="d-outline" x={16} y={68} width={BAR_W} height={14} data-tone="accent" />
+      <text class="d-tag d-accent" x={490} y={102} text-anchor="end">Full, turns to go</text>
+    </g>
+
+    <Node x={173} y={124} w={160} h={44} title="Model" center titleY={152} />
+    <Wire k="w-l1" points={[[223, 168], [223, 262], [91, 262], [91, 360]]} arrow="both" />
+    <Wire k="w-l2" points={[[253, 168], [253, 360]]} arrow="both" />
+    <Wire k="w-l3" points={[[283, 168], [283, 262], [415, 262], [415, 360]]} arrow="both" />
+    {TOOLS.map((t, i) => <Node k={`l-card${i + 1}`} x={16 + i * 162} y={360} w={150} h={56} tag="MCP tool" lines={[t]} mono center />)}
+
+    <!-- Code mode -->
+    <Zone x={526} y={0} w={506} h={432} tag="Code mode" note="one program, only the return value comes back" />
+    <text class="d-mono d-dim" x={1016} y={26} text-anchor="end" data-key="r-turn">turn 1</text>
+    <text class="d-sub" x={542} y={60}>context window</text>
+    <rect class="d-fill-ground" x={542} y={68} width={BAR_W} height={14} />
+    <rect class="d-fill-accent" x={542} y={68} width={20} height={14} data-key="r-seg1" />
+    <text class="d-mono d-accent" x={542} y={102} data-key="r-lbl1">one line</text>
+
+    <Node x={699} y={124} w={160} h={44} title="Model" center titleY={152} />
+    <Wire k="w-rc" points={[[779, 168], [779, 188]]} arrow="both" radius={0} />
+    <Node k="sandbox" x={542} y={188} w={474} h={132} tag="Sandbox" tagRight="run_code(program)" tone="ghost">
+      <Code x={546} y={218} w={460} lines={PROGRAM} k="program" lineHeight={14} pad={12} bare />
+    </Node>
+    <Wire k="w-s1" points={[[617, 320], [617, 360]]} arrow="both" />
+    <Wire k="w-s2" points={[[779, 320], [779, 360]]} arrow="both" />
+    <Wire k="w-s3" points={[[941, 320], [941, 360]]} arrow="both" />
+    {TOOLS.map((t, i) => <Node k={`r-card${i + 1}`} x={542 + i * 162} y={360} w={150} h={56} tag="MCP tool" lines={[t]} mono center />)}
+  </Diagram>
+  <Legend
+    items={[
+      { swatch: "dots", label: "intermediate results in context" },
+      { swatch: "accent", label: "the return value" },
+    ]}
+  />
+  <Fragment slot="caption">The same job twice: redact PII in every support dataset.</Fragment>
+</Figure>
+
+<script>
+  import { defineScene } from "../../figure/motion";
+  import type { Scene } from "../../figure/motion";
+
+  const SEGS = ["l-seg1", "l-seg2", "l-seg3", "l-segm"];
+
+  async function leftTurn(s: Scene, n: 1 | 2 | 3) {
+    const w = `w-l${n}`;
+    s.text("l-turn", `turn ${n}`);
+    s.state(w, "on");
+    s.state(`l-card${n}`, "active");
+    await s.stream(w, { kind: "call", ms: 600 });
+    await Promise.all([s.grow(`l-seg${n}`, "width", 1000), s.stream(w, { kind: "payload", n: 40, ms: 1000, reverse: true })]);
+    s.show(`l-lbl${n}`);
+    s.state(w, null);
+    s.state(`l-card${n}`, null);
+  }
+
+  async function leftSide(s: Scene) {
+    for (const n of [1, 2, 3] as const) {
+      await leftTurn(s, n);
+      await s.wait(250);
+    }
+    const more = s.grow("l-segm", "width", 1800);
+    for (let i = 0; i < 4; i++) {
+      const n = ((i % 3) + 1) as 1 | 2 | 3;
+      s.state(`w-l${n}`, "on");
+      await s.stream(`w-l${n}`, { kind: "call", ms: 200 });
+      await s.stream(`w-l${n}`, { kind: "payload", n: 8, ms: 220, reverse: true });
+      s.state(`w-l${n}`, null);
+      s.text("l-turn", `turn ${4 + i * 2}`);
+    }
+    await more;
+    s.text("l-turn", "turn 12");
+    s.show("l-full");
+  }
+
+  async function rightSide(s: Scene) {
+    s.text("r-turn", "turn 1");
+    s.state("w-rc", "on");
+    await s.stream("w-rc", { kind: "call", ms: 500 });
+    s.state("w-rc", null);
+    s.state("sandbox", "active");
+    await s.type("program", 1500);
+    await s.wait(300);
+    s.state("w-s1", "on");
+    s.state("r-card1", "active");
+    await s.stream("w-s1", { kind: "call", ms: 300 });
+    await s.stream("w-s1", { kind: "payload", n: 10, ms: 450, reverse: true });
+    s.state(["w-s1", "r-card1"], null);
+    for (let i = 0; i < 3; i++) {
+      s.state("w-s2", "on");
+      s.state("r-card2", "active");
+      await s.stream("w-s2", { kind: "call", ms: 280 });
+      await s.stream("w-s2", { kind: "payload", n: 24, ms: 600, reverse: true });
+      s.state(["w-s2", "r-card2"], null);
+      s.state("w-s3", "on");
+      s.state("r-card3", "active");
+      await s.stream("w-s3", { kind: "payload", n: 14, ms: 450 });
+      s.state(["w-s3", "r-card3"], null);
+    }
+    await s.wait(300);
+    s.state("sandbox", null);
+    s.state("w-rc", "accent");
+    await s.stream("w-rc", { kind: "result", ms: 500, reverse: true });
+    await s.grow("r-seg1", "width", 300);
+    s.show("r-lbl1");
+    s.state("w-rc", null);
+  }
+
+  defineScene("calls-vs-code", {
+    setup(s) {
+      s.attr([...SEGS, "r-seg1"], "width", 0);
+      s.hide(["l-lbl1", "l-lbl2", "l-lbl3", "l-full", "r-lbl1"]);
+      s.text("l-turn", "turn 0");
+      s.text("r-turn", "turn 0");
+      s.blank("program");
+      s.caption("The same job twice: redact PII in every support dataset. Left calls the tools one at a time; right hands the sandbox a program.");
+    },
+    async play(s) {
+      await s.wait(1200);
+      const captions = (async () => {
+        s.caption("Left: turn one returns the dataset list into context. Right: one run_code call hands the sandbox the whole program.", 1, 3);
+        await s.wait(3400);
+        s.caption("Left: every example crosses the model and lands in context. Right: the same results shuttle between the sandbox and the tools.", 2, 3);
+        await s.wait(4600);
+        s.caption("Left: the window fills before the job is done. Right: one line comes back, and the window is still empty.", 3, 3);
+      })();
+      await Promise.all([leftSide(s), rightSide(s), captions]);
+      await s.wait(1600);
+    },
+  });
+</script>

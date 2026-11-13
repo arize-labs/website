@@ -1,0 +1,15 @@
+---
+/**
+ * The key to a figure's encodings, as HTML under the diagram so it wraps on
+ * phones. Swatches: ink, soft, accent, dots (bulk payload), hatch (overhead
+ * or what would have been), zone, line, line-accent, dashed, dot.
+ */
+export interface Props {
+  items: { swatch: string; label: string }[];
+}
+const { items } = Astro.props;
+---
+
+<ul class="fig-legend">
+  {items.map((it) => <li><span class={`sw sw-${it.swatch}`} aria-hidden="true"></span>{it.label}</li>)}
+</ul>

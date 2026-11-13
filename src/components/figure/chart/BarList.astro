@@ -1,0 +1,45 @@
+---
+/**
+ * Horizontal bars, one labelled row each. Rows with tone="accent" are the
+ * series the figure is about (solid accent, bold label); the rest take the
+ * dot texture.
+ */
+export interface Row {
+  label: string;
+  value: number;
+  display?: string;
+  tone?: "accent";
+  tip?: string;
+}
+export interface Props {
+  rows: Row[];
+  max: number;
+  ticks: number[];
+  minor?: number[];
+  tickFormat?: (v: number) => string;
+}
+const { rows, max, ticks, minor = [], tickFormat = String } = Astro.props;
+const pos = (v: number) => (v / max) * 100;
+---
+
+<div class="ch">
+  <div class="ch-rows">
+    <div class="ch-plot">
+      <div class="ch-grid" aria-hidden="true">
+        {ticks.map((t) => <span class="ch-gridline" data-zero={t === 0 ? "" : undefined} style={`left: ${pos(t)}%`}></span>)}
+      </div>
+      {rows.map((r, i) => (
+        <div class="ch-row" data-tone={r.tone} data-grow tabindex="0" data-tip={r.tip} aria-label={r.tip?.replaceAll("\n", ", ") ?? `${r.label}: ${r.display ?? r.value}`} style={`--i: ${i}`}>
+          <span class="ch-label">{r.label}</span>
+          <span class="ch-track" style={`--v: ${pos(r.value)}`}>
+            <span class="ch-bar"></span>
+            <span class="ch-val ch-num">{r.display ?? r.value}</span>
+          </span>
+        </div>
+      ))}
+    </div>
+    <div class="ch-axis" aria-hidden="true">
+      {ticks.map((t) => <span class="ch-tick ch-num" data-minor={minor.includes(t) ? "" : undefined} style={`left: ${pos(t)}%`}>{tickFormat(t)}</span>)}
+    </div>
+  </div>
+</div>

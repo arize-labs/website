@@ -1,0 +1,41 @@
+---
+/**
+ * A block of code on a code ground. Lines are tspans so a scene can type
+ * them in (Scene.type). Wrap a span of a line in «» to colour it with the
+ * accent, or start a comment with # to dim it.
+ */
+export interface Props {
+  x: number;
+  y: number;
+  w: number;
+  lines: string[];
+  k?: string;
+  lineHeight?: number;
+  /** Padding inside the ground. */
+  pad?: number;
+  /** Draw no ground (code sitting directly in a node). */
+  bare?: boolean;
+}
+const { x, y, w, lines, k, lineHeight = 17, pad = 12, bare } = Astro.props;
+const h = lines.length * lineHeight + pad * 1.4;
+type Part = { text: string; cls?: string };
+function parts(line: string): Part[] {
+  const out: Part[] = [];
+  const hash = line.indexOf("#");
+  const code = hash >= 0 ? line.slice(0, hash) : line;
+  code.split(/(«[^»]*»)/).forEach((p) => {
+    if (!p) return;
+    if (p.startsWith("«")) out.push({ text: p.slice(1, -1), cls: "k" });
+    else out.push({ text: p });
+  });
+  if (hash >= 0) out.push({ text: line.slice(hash), cls: "c" });
+  return out;
+}
+---
+
+{!bare && <rect class="d-codebox" x={x} y={y} width={w} height={h} rx="2" />}
+<text class="d-code" data-key={k}>
+  {lines.map((line, i) => (
+    <tspan x={x + pad} y={y + pad + 4 + (i + 0.5) * lineHeight}>{parts(line).map((p) => (p.cls ? <tspan class={p.cls}>{p.text}</tspan> : p.text))}</tspan>
+  ))}
+</text>

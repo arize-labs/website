@@ -1,0 +1,47 @@
+---
+/**
+ * The title block at the top of interior pages and posts. See DESIGN.md
+ * ("Title block").
+ *
+ *   eyebrow   optional mono label above the title (full-width pages only)
+ *   heading   the h1, always left-aligned
+ *   intro     optional standfirst under the title
+ *   meta      slot: one mono line under the intro (dates, author, share)
+ *   default   slot: extras after the meta line (a tag nav, a back link)
+ *
+ * `width="prose"` puts the block in the centred reading column, as posts
+ * are; the text inside stays left-aligned.
+ */
+export interface Props {
+  heading: string;
+  intro?: string;
+  eyebrow?: string;
+  width?: "content" | "prose";
+}
+const { heading, intro, eyebrow, width = "content" } = Astro.props;
+---
+
+<header class:list={["page-header", { "reading-column": width === "prose" }]}>
+  {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+  <h1>{heading}</h1>
+  {intro && <p class="intro">{intro}</p>}
+  {Astro.slots.has("meta") && <div class="meta eyebrow"><slot name="meta" /></div>}
+  <slot />
+</header>
+
+<style>
+  .page-header { padding: var(--space-9) 0 var(--space-7); }
+  .eyebrow { margin-bottom: var(--space-4); }
+  h1 { font: 600 var(--text-h2) / 1.05 var(--font-sans); letter-spacing: var(--tracking-tight); text-wrap: balance; }
+  /* On full-width pages the intro keeps a readable measure; in the reading
+     column it spans the column. */
+  .intro { max-width: 52ch; margin-top: var(--space-4); color: var(--soft); font-size: var(--text-intro); line-height: 1.45; }
+  .reading-column .intro { max-width: none; }
+  /* One line of mono caps; items wrap on narrow screens. */
+  .meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-6); margin: var(--space-6) 0 0; }
+  .meta :global(a) { color: inherit; }
+
+  @media (max-width: 720px) {
+    .page-header { padding: var(--space-7) 0 var(--space-6); }
+  }
+</style>

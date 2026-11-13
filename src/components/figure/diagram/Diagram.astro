@@ -1,0 +1,43 @@
+---
+/**
+ * The SVG canvas for a diagram. Coordinates are diagram units; a wide figure
+ * is drawn 1032 units across so one unit is one pixel at full width. Under
+ * `minWidth` CSS pixels the diagram stops shrinking and scrolls sideways
+ * inside its frame instead, so its text never drops below a readable size.
+ *
+ * Children are the primitives in this folder (Zone, Node, Wire, Chip, Code,
+ * Meter) plus plain SVG using the d-* classes in figure.css. Tokens that
+ * scenes send along wires are drawn in a layer above everything else.
+ */
+export interface Props {
+  /** Unique on the page; prefixes the pattern ids. */
+  id: string;
+  width?: number;
+  height: number;
+  /** What the diagram shows, for screen readers. */
+  label: string;
+  minWidth?: number;
+}
+const { id, width = 1032, height, label, minWidth = 820 } = Astro.props;
+const dots = `${id}-dots`;
+const hatch = `${id}-hatch`;
+---
+
+<svg
+  class="d-svg"
+  viewBox={`0 0 ${width} ${height}`}
+  role="img"
+  aria-label={label}
+  style={`--d-min: ${minWidth}px; --d-dots: url(#${dots}); --d-hatch: url(#${hatch});`}
+>
+  <defs>
+    <pattern id={dots} width="3" height="3" patternUnits="userSpaceOnUse">
+      <circle class="d-pat-dot" cx="1.5" cy="1.5" r="0.85" />
+    </pattern>
+    <pattern id={hatch} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+      <line class="d-pat-hatch" x1="0" y1="0" x2="0" y2="5" />
+    </pattern>
+  </defs>
+  <slot />
+  <g data-tokens aria-hidden="true"></g>
+</svg>

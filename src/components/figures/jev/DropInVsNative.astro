@@ -1,0 +1,40 @@
+---
+import Figure from "../../figure/Figure.astro";
+import IntervalPlot from "../../figure/chart/IntervalPlot.astro";
+import { DATA, TASKS, TASK_NAME, signed } from "./data";
+
+const rows = TASKS.map((t) => {
+  const p = DATA.paired.find((r) => r.t === t)!;
+  return {
+    label: TASK_NAME[t],
+    value: p.d,
+    lo: p.lo,
+    hi: p.hi,
+    display: p.d === 0 ? undefined : signed(p.d),
+    tip: [
+      TASK_NAME[t],
+      p.d === 0 ? "No difference" : `${signed(p.d)} points for ${p.d > 0 ? "native" : "drop-in"}`,
+      `Interval ${signed(p.lo)} to ${signed(p.hi)}`,
+      `Only native right: ${p.nOnly} examples`,
+      `Only drop-in right: ${p.sOnly} examples`,
+      `${DATA.n[t]} examples`,
+    ].join("\n"),
+  };
+});
+const ticks = [-15, -10, -5, 0, 5, 10, 15, 20];
+---
+
+<Figure title="Native minus drop-in accuracy, by task">
+  <IntervalPlot
+    rows={rows}
+    domain={[-15, 20]}
+    ticks={ticks}
+    minor={[-15, -5, 5, 15]}
+    tickFormat={(v) => signed(v, 0) || "0"}
+    ends={["Drop-in better", "Native better"]}
+  />
+  <Fragment slot="caption">
+    Percentage points on the same examples, with 95% paired bootstrap intervals. None of the ten differences is
+    significant after correction. Hover or focus a row for the examples each setup got right and the other got wrong.
+  </Fragment>
+</Figure>

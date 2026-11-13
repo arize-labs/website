@@ -1,0 +1,220 @@
+---
+import Figure from "../../figure/Figure.astro";
+import Diagram from "../../figure/diagram/Diagram.astro";
+import Zone from "../../figure/diagram/Zone.astro";
+import Wire from "../../figure/diagram/Wire.astro";
+import Chip from "../../figure/diagram/Chip.astro";
+import Code from "../../figure/diagram/Code.astro";
+import Meter from "../../figure/diagram/Meter.astro";
+import Legend from "../../figure/diagram/Legend.astro";
+
+const SX = 20, SW = 88, SY = 60, SH = 248;
+/** Finished stack: tiny, so its labels hang off leader lines. */
+const blocks = [
+  { k: "b-sys", h: 6, fill: "soft" },
+  { k: "b-defs", h: 12, fill: "hatch", label: "search, execute" },
+  { k: "b-ask", h: 5, fill: "ink", label: "user ask" },
+  { k: "b-sigs", h: 10, fill: "hatch", label: "two signatures" },
+  { k: "b-result", h: 8, fill: "accent", label: "return value" },
+];
+let y = SY;
+const stack = blocks.map((b) => ({ ...b, y: (y += b.h) - b.h }));
+const labelled = stack.filter((b) => b.label);
+const LX = SX + SW + 26;
+
+const fns = [
+  { k: "fn-transcript", x: 396, label: "get_transcript()" },
+  { k: "fn-attach", x: 530, label: "attach_to_lead()" },
+  { k: "fn-search", x: 664, label: "search_email()" },
+  { k: "fn-create", x: 784, label: "create_task()" },
+  { k: "fn-more", x: 896, label: "… 96 more" },
+];
+const chips = [
+  { k: "c-transcript", label: "get_transcript", to: "fn-transcript" },
+  { k: "c-attach", label: "attach_to_lead", to: "fn-attach" },
+  { k: "c-search", label: "search_email", to: "fn-search" },
+  { k: "c-create", label: "create_task", to: "fn-create" },
+  { k: "c-update", label: "update_lead", to: "fn-more" },
+  { k: "c-calendar", label: "get_calendar", to: "fn-more" },
+  { k: "c-read", label: "read_doc", to: "fn-more" },
+  { k: "c-send", label: "send_message", to: "fn-more" },
+];
+const chipAt = (i: number) => ({ x: 396 + (i % 4) * 158, y: 300 + Math.floor(i / 4) * 40 });
+const CODE = [
+  "t = «get_transcript»(meeting_id)",
+  "s = summarize(t)                # reduced in the sandbox",
+  "«attach_to_lead»(lead_id, s)",
+  'return "attached"',
+];
+---
+
+<Figure
+  title="Tools as functions in a sandbox"
+  width="wide"
+  ground="dots"
+  scene="code-mode-sandbox"
+  status="Two turns. The transcript never entered the context window, and the preamble is two definitions instead of a hundred."
+>
+  <Diagram
+    id="code-mode-sandbox"
+    height={480}
+    label="Code mode. A catalog of one hundred tools is packed into a sandbox as importable functions, so the tool preamble in the model's context collapses to two definitions, search and execute. The model searches for the functions it needs, then runs a short program in the sandbox that fetches and summarizes the transcript there. Only the small return value crosses back into context."
+  >
+    <Zone x={0} y={0} w={264} h={480} tag="Model context window" />
+    <rect class="d-fill-ground" x={SX} y={SY} width={SW} height={SH} />
+    <rect class="d-fill-hatch" x={SX} y={SY + 6} width={SW} height={0} data-key="b-ghost" />
+    <g data-key="b-ghost-label" data-off>
+      <text class="d-sub" x={SX + SW + 12} y={150}>tool preamble</text>
+      <text class="d-sub" x={SX + SW + 12} y={165}>100 definitions,</text>
+      <text class="d-sub" x={SX + SW + 12} y={180}>resent every turn</text>
+    </g>
+    {stack.map((b) => <rect class={`d-fill-${b.fill}`} x={SX} y={b.y} width={SW} height={b.h} data-key={b.k} />)}
+    {labelled.map((b, i) => {
+      const ly = SY + 12 + i * 18;
+      return (
+        <g data-key={`${b.k}-label`}>
+          <path class="d-outline" d={`M${SX + SW + 2},${b.y + b.h / 2}H${SX + SW + 12}L${LX - 4},${ly - 4}H${LX - 2}`} />
+          <text class:list={["d-sub", b.fill === "accent" && "d-accent"]} x={LX} y={ly}>{b.label}</text>
+        </g>
+      );
+    })}
+    <text class="d-tag" x={SX + SW / 2} y={220} text-anchor="middle" data-key="free">Free</text>
+
+    <line class="d-rule" x1={20} y1={348} x2={244} y2={348} />
+    <text class="d-tag" x={20} y={374}>Context used</text>
+    <Meter x={20} y={404} w={224} value={0.08} fill="accent" k="m-code" label="with code mode" />
+    <Meter x={20} y={444} w={224} value={0.74} fill="hatch" label="the preamble alone, without it" />
+
+    <Wire k="w-chat" points={[[264, 120], [380, 120]]} arrow="both" />
+    <text class="d-mono d-dim" x={322} y={106} text-anchor="middle" data-key="chat-label" data-off></text>
+
+    <Zone x={380} y={0} w={652} h={232} tag="Sandbox" edge="dashed" />
+    <text class="d-sub" x={460} y={26} data-key="sandbox-note">the catalog as importable functions; code runs here, next to the data</text>
+    <text class="d-mono d-dim" x={396} y={64} data-key="fns-empty" data-off>no functions yet</text>
+    <g data-key="fns">
+      {fns.map((f) => <text class:list={["d-mono", f.k === "fn-more" && "d-dim"]} x={f.x} y={64} data-key={f.k}>{f.label}</text>)}
+    </g>
+    <Code x={396} y={80} w={620} lines={CODE} k="code" />
+    <text class="d-mono d-dim" x={396} y={204} data-key="sandbox-status">the transcript stays here; only the return value leaves</text>
+
+    <Wire k="w-fetch" points={[[520, 300], [520, 232]]} />
+    <Wire k="w-attach" points={[[600, 232], [600, 300]]} />
+
+    <Zone x={380} y={256} w={652} h={224} tag="Tool catalog" />
+    <text class="d-sub" x={556} y={400} data-key="catalog-note">still on their MCP servers, now reached through the sandbox</text>
+    {chips.map((c, i) => {
+      const { x, y } = chipAt(i);
+      return <Chip k={c.k} x={x} y={y} w={148} h={30} label={c.label} state="packed" />;
+    })}
+    <Chip x={396} y={380} w={148} h={30} label="+ 92 more" tone="more" />
+  </Diagram>
+  <Legend
+    items={[
+      { swatch: "hatch", label: "tool definitions in context" },
+      { swatch: "accent", label: "what comes back to the model" },
+      { swatch: "dots", label: "payloads, which stay in the sandbox" },
+    ]}
+  />
+  <Fragment slot="caption">The tools haven't changed; the model just reaches them through code that runs next to the data.</Fragment>
+</Figure>
+
+<script>
+  import { defineScene } from "../../figure/motion";
+
+  const CHIPS: [string, string][] = [
+    ["c-transcript", "fn-transcript"], ["c-attach", "fn-attach"], ["c-search", "fn-search"], ["c-create", "fn-create"],
+    ["c-update", "fn-more"], ["c-calendar", "fn-more"], ["c-read", "fn-more"], ["c-send", "fn-more"],
+  ];
+  const N = 5;
+
+  defineScene("code-mode-sandbox", {
+    setup(s) {
+      s.attr("b-ghost", "height", 180);
+      s.show("b-ghost-label");
+      s.attr(["b-defs", "b-ask", "b-sigs", "b-result"], "height", 0);
+      s.hide(["b-defs-label", "b-ask-label", "b-sigs-label", "b-result-label", "free", "fns", "sandbox-status"]);
+      s.show("fns-empty");
+      s.blank("code");
+      s.attr("m-code", "width", 0);
+      s.state(CHIPS.map(([c]) => c), null);
+      s.state(["w-chat", "w-fetch", "w-attach"], "idle");
+      s.text("sandbox-note", "empty until code mode packs the catalog here");
+      s.text("catalog-note", "100 tools on MCP servers, every schema repeated in the preamble");
+      s.caption("Without code mode, every tool definition is sent up front on every turn. That preamble is most of the window.");
+    },
+    async play(s) {
+      await s.wait(1400);
+
+      s.caption("Code mode packs the catalog into the sandbox as importable functions. The preamble collapses to two tools: search and execute.", 1, N);
+      s.hide("fns-empty");
+      const collapse = s.tween(1800, (p) => {
+        s.attr("b-ghost", "height", 180 * (1 - p));
+        s.attr("b-defs", "height", 12 * p);
+      });
+      const flights: Promise<void>[] = [];
+      for (const [chip, fn] of CHIPS) {
+        flights.push(s.fly(chip, fn));
+        await s.wait(110);
+      }
+      s.hide("b-ghost-label");
+      await Promise.all([...flights, collapse]);
+      s.show(["fns", "b-defs-label"]);
+      s.state(CHIPS.map(([c]) => c), "packed");
+      s.text("sandbox-note", "the catalog as importable functions; code runs here, next to the data");
+      s.text("catalog-note", "still on their MCP servers, now reached through the sandbox");
+      await s.wait(900);
+
+      s.caption("The user asks: attach the call transcript to the lead in the CRM.", 2, N);
+      await s.grow("b-ask", "height", 400);
+      s.show("b-ask-label");
+      await s.wait(1100);
+
+      s.caption('Turn 1. search("crm transcript") returns two function signatures. Only those enter the context.', 3, N);
+      s.text("chat-label", "search()");
+      s.show("chat-label");
+      s.state("w-chat", "on");
+      await s.stream("w-chat", { kind: "call" });
+      s.state(["fn-transcript", "fn-attach"], "hot");
+      await s.wait(300);
+      await s.stream("w-chat", { kind: "payload", n: 4, ms: 650, reverse: true });
+      await s.grow("b-sigs", "height", 300);
+      s.show("b-sigs-label");
+      s.state("w-chat", "idle");
+      s.hide("chat-label");
+      await s.wait(900);
+
+      s.caption("Turn 2. execute runs a short program. The transcript is fetched and summarized inside the sandbox.", 4, N);
+      s.text("chat-label", "execute(code)");
+      s.show("chat-label");
+      s.state("w-chat", "on");
+      await s.stream("w-chat", { kind: "call" });
+      s.state("w-chat", "idle");
+      s.hide("chat-label");
+      await s.type("code", 1400);
+      s.state("w-fetch", "on");
+      s.state("c-transcript", "hot");
+      await s.stream("w-fetch", { kind: "payload", n: 56, ms: 1300 });
+      s.show("sandbox-status");
+      s.state("w-fetch", null);
+      s.state("c-transcript", "packed");
+      await s.wait(300);
+      s.state("w-attach", "on");
+      s.state("c-attach", "hot");
+      await s.stream("w-attach", { kind: "payload", n: 8, ms: 700 });
+      s.state("w-attach", null);
+      s.state("c-attach", "packed");
+      await s.wait(300);
+
+      s.caption("Only the return value crosses back into context.", 5, N);
+      s.text("chat-label", '"attached"');
+      s.show("chat-label");
+      s.state("w-chat", "accent");
+      await s.stream("w-chat", { kind: "result", reverse: true });
+      await Promise.all([s.grow("b-result", "height", 300), s.grow("m-code", "width", 600)]);
+      s.show(["b-result-label", "free"]);
+      s.hide("chat-label");
+      s.state(["fn-transcript", "fn-attach"], null);
+      await s.wait(1200);
+    },
+  });
+</script>

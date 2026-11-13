@@ -1,0 +1,60 @@
+---
+import Figure from "../../figure/Figure.astro";
+import ColumnChart from "../../figure/chart/ColumnChart.astro";
+import VariantControl from "../../figure/chart/VariantControl.astro";
+import { DATA } from "./data";
+
+/** 95% Wilson score interval for k successes in n trials. */
+function wilson(k: number, n: number): [number, number] {
+  const z = 1.96, p = k / n, d = 1 + (z * z) / n;
+  const c = (p + (z * z) / (2 * n)) / d;
+  const h = (z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))) / d;
+  return [Math.max(0, c - h), Math.min(1, c + h)];
+}
+
+const variants = [
+  { id: "jev-slot-in", label: "Jev drop-in" },
+  { id: "jev-native", label: "Jev native" },
+] as const;
+
+const binsFor = (id: (typeof variants)[number]["id"]) => {
+  const src = DATA.ent[id];
+  return src.map((b, i) => {
+    const p = b.k / b.n;
+    const [lo, hi] = wilson(b.k, b.n);
+    const last = i === src.length - 1;
+    const label = last ? `≥ ${b.lo}` : `${b.lo}–${b.hi}`;
+    return {
+      label,
+      sub: `n=${b.n}`,
+      value: p * 100,
+      lo: lo * 100,
+      hi: hi * 100,
+      display: i === 0 || last ? `${Math.round(p * 100)}%` : undefined,
+      tip: `Jev entropy ${label} bits\n${b.n} examples\n${b.k} had an LLM judge change its label\n${Math.round(p * 100)}%, interval ${Math.round(lo * 100)} to ${Math.round(hi * 100)}%`,
+    };
+  });
+};
+---
+
+<Figure title="How often an LLM judge wavered, by how uncertain Jev was">
+  <VariantControl label="Jev setup" options={[...variants]} />
+  <div data-variants>
+    {variants.map((v, i) => (
+      <div data-variant={v.id} hidden={i !== 0}>
+        <ColumnChart
+          bins={binsFor(v.id)}
+          max={100}
+          yTicks={[0, 25, 50, 75, 100]}
+          yFormat={(t) => `${t}%`}
+          xTitle="Jev's uncertainty, in bits of entropy: 0 is certain, 1 is a coin flip"
+          height={260}
+        />
+      </div>
+    ))}
+  </div>
+  <Fragment slot="caption">
+    Share of examples where at least one LLM judge changed its label across ten runs, with 95% Wilson intervals. The
+    middle groups hold 20 to 50 examples each, so treat small dips between them as noise.
+  </Fragment>
+</Figure>

@@ -7,6 +7,12 @@ tags: [phoenix, evals, agents]
 art: graph
 ---
 
+import TelemetryConsumers from "../../components/figures/context-platform/TelemetryConsumers.astro";
+import CodeVsTraces from "../../components/figures/context-platform/CodeVsTraces.astro";
+import EvalSurfaceArea from "../../components/figures/context-platform/EvalSurfaceArea.astro";
+import JudgeComparison from "../../components/figures/context-platform/JudgeComparison.astro";
+import VerificationLoop from "../../components/figures/context-platform/VerificationLoop.astro";
+
 Observability was built for a world where humans did the reasoning. A human
 deployed code, reviewed traces, triaged alerts, diagnosed failures. The tooling
 matched: dashboards, filters, evaluation pipelines. All of it assumed a human in
@@ -15,6 +21,8 @@ the loop.
 That assumption is breaking.
 
 ## The evolution of software engineering
+
+<TelemetryConsumers />
 
 Two things changed at once.
 
@@ -34,6 +42,8 @@ agents and humans share context: where traces, evals, and feedback are
 accessible through programmatic interfaces, not just dashboards.
 
 ## Why traces are the source of truth
+
+<CodeVsTraces />
 
 In traditional software, you can read the code. Every path is visible.
 Deterministic. You see it all before it runs. In an agent, you can't. Decisions
@@ -96,6 +106,8 @@ into action, evaluation is where it starts.
 
 ### The expanding surface area
 
+<EvalSurfaceArea />
+
 The evaluation problem is expanding along two dimensions simultaneously. On one
 axis, what's under test is growing: from prompts and model outputs into tools,
 security, orchestration, context management, environment interaction,
@@ -113,6 +125,8 @@ The surface area of what needs evaluation is outpacing what a single LLM call
 can assess.
 
 ### From LLM-as-a-judge to agent-as-a-judge
+
+<JudgeComparison />
 
 Evaluation strategies naturally evolve to match the complexity of what they
 measure. LLM-as-a-judge emerged when generative outputs broke the assumption of
@@ -158,6 +172,8 @@ agent evals, sandboxes) converges on a single architectural goal: pulling
 verification into the agent loop itself.
 
 ### Pulling verification into the agent loop
+
+<VerificationLoop />
 
 Here's how it works concretely. An agentic application emits traces,
 evaluation results, and feedback into Phoenix. A coding agent (Claude Code,

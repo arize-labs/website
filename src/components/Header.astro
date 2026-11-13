@@ -6,7 +6,7 @@ const path = Astro.url.pathname;
 const isCurrent = (href: string) => !href.includes("#") && (path === href || path.startsWith(`${href}/`));
 ---
 
-<header class="site-header">
+<header class="site-header page-grid">
   <div class="bar">
     <a class="home" href="/" aria-label={`${site.name} home`}><Wordmark /></a>
 
@@ -37,9 +37,7 @@ const isCurrent = (href: string) => !href.includes("#") && (path === href || pat
     position: sticky;
     top: 0;
     z-index: 10;
-    /* The logo and nav sit on the outer frame (the ruler lines), not the
-       content column; phones fall back to the page gutter. */
-    padding-inline: var(--frame-inset);
+    /* The logo and nav sit in the content column, matching the footer. */
     background: var(--bg);
   }
   .bar {
@@ -88,7 +86,6 @@ const isCurrent = (href: string) => !href.includes("#") && (path === href || pat
   .menu-panel a { font-size: var(--text-small); }
 
   @media (max-width: 720px) {
-    .site-header { padding-inline: var(--gutter); }
     .nav { display: none; }
     .menu { display: block; }
   }
