@@ -227,7 +227,9 @@ class Graphic {
     this.line(`M${a} ${b}h${Math.round(w) - 1}v${Math.round(h) - 1}h${1 - Math.round(w)}z`, stroke);
   }
 
-  svg(kind: string) {
+  /** `view` widens the viewBox past the drawing (social cards); the ground fills it. */
+  svg(kind: string, view: ViewBox = [0, 0, W, H]) {
+    const [vx, vy, vw, vh] = view.map(num);
     const gid = `ground-${this.id}`;
     const ground =
       `<pattern id="${gid}" width="${2 * P}" height="${2 * P}" patternUnits="userSpaceOnUse" style="fill:var(--fg);fill-opacity:.16">` +
@@ -241,9 +243,9 @@ class Graphic {
       })
       .join("");
     return (
-      `<svg class="cover-art" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" aria-hidden="true" data-art="${kind}">` +
+      `<svg class="cover-art" viewBox="${vx} ${vy} ${vw} ${vh}" preserveAspectRatio="xMidYMid slice" aria-hidden="true" data-art="${kind}">` +
       `<defs>${ground}${this.defs.join("")}</defs>` +
-      `<rect width="${W}" height="${H}" fill="url(#${gid})"/>` +
+      `<rect x="${vx}" y="${vy}" width="${vw}" height="${vh}" fill="url(#${gid})"/>` +
       `<g fill="none" stroke-linecap="round">${dots}</g>` +
       `<g fill="none" stroke-linejoin="round">${this.rules.join("")}</g>` +
       `</svg>`
@@ -609,14 +611,20 @@ function verdicts(g: Graphic, rand: Rand) {
 
 const KINDS: Record<ArtKind, (g: Graphic, rand: Rand, seed: number) => void> = { mark, pulse, bloom, trace, graph, signal, sandbox, verdicts };
 
+/** The drawing's own box: 400 × 250, with the subject inside x 84–316, y 56–194. */
+export const ART_BOX = { width: W, height: H, subject: { x0: X0, x1: X1, y0: Y0, y1: Y1 } } as const;
+/** A viewBox as x, y, width, height in the drawing's units. */
+export type ViewBox = [x: number, y: number, w: number, h: number];
+
 /**
  * The cover art for `seed` (a post id) as an SVG string. Without a `kind`,
- * the seed picks one, so a run of posts gets a mix.
+ * the seed picks one, so a run of posts gets a mix. `view` reframes it (see
+ * the social cards in src/lib/og); by default it is the whole drawing.
  */
-export function coverArt(seed: string, kind?: ArtKind): string {
+export function coverArt(seed: string, kind?: ArtKind, view?: ViewBox): string {
   const h = hashString(seed);
   const k = kind ?? ART_KINDS[h % ART_KINDS.length];
   const g = new Graphic(h.toString(36), h);
   KINDS[k](g, rng(h), h);
-  return g.svg(k);
+  return g.svg(k, view);
 }

@@ -40,12 +40,14 @@ src/
     sections/             landing-page building blocks (Hero, Section, ...)
     heroes/               hero art; HeroPlaceholder until the Three.js hero lands
   lib/content.ts          collection queries and URL helpers
+  lib/og/                 social cards (Open Graph images): cards.ts picks, render.ts draws
   pages/
     index.astro           landing
     team/index.astro, team/[id].astro
     blog/[...page].astro  paginated list
     blog/[id].astro       post
     blog/tags/[tag].astro
+    og/[...card].ts       social card images, drawn at build time
     rss.xml.ts
     404.astro
 ```

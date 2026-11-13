@@ -3,6 +3,8 @@ export const site = {
   description:
     "Where ambition meets creativity. We chase early ideas and build in the open, with a mission to make AI work for humanity.",
   locale: "en",
+  /** og:locale wants language_TERRITORY. */
+  ogLocale: "en_US",
   /** The company behind Labs: footer logo, link and copyright holder. */
   parent: { name: "Arize AI", url: "https://arize.com" },
   nav: [

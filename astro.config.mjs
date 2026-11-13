@@ -16,7 +16,12 @@ const shikiTheme = (theme) => /** @type {NonNullable<import("astro").ShikiConfig
 // https://astro.build/config
 export default defineConfig({
   // TODO: replace with the production domain once it is decided.
-  site: "https://labs.arize.com",
+  // Vercel preview builds use their own branch URL, so canonical links and
+  // social card images (og:image) resolve on the preview being tested.
+  site:
+    process.env.VERCEL_ENV === "preview" && process.env.VERCEL_BRANCH_URL
+      ? `https://${process.env.VERCEL_BRANCH_URL}`
+      : "https://labs.arize.com",
   // Static by default. Individual routes can opt into on-demand rendering
   // with `export const prerender = false`.
   adapter: vercel(),

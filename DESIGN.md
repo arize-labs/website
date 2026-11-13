@@ -178,6 +178,53 @@ Checklist for a new figure:
 - [ ] Checked at 1440px and 390px, light and dark, with motion and with
       reduced motion.
 
+## Social cards
+
+Every page has a 1200 × 630 social card, the image link previews show
+(`og:image`, `twitter:image`). Cards are drawn at build time by
+[`src/lib/og/`](./src/lib/og/) and served from `/og/`: `/og/site.png`,
+`/og/blog/<post>.png`, `/og/team/<member>.jpg`. Don't make cards by hand
+unless a post needs one (see below).
+
+**Layout.** Every card has the same two halves, so a feed of our links reads
+as a series:
+
+- **Text, left.** The lockup and the domain; an eyebrow in mono caps (`Blog ·
+  Nov 13, 2026`, `Video · …`, `Team`); the title in Urbanist 600, sized to fit
+  three lines (64px down to 46px); then a byline with headshots and the
+  reading time (posts) or one line of description (pages, people).
+- **Panel, right**, on the dot ground: the post's halftone cover art,
+  reframed so the subject fills the panel; or a framed picture (a cover
+  image, a video poster, a headshot) with registration crosses on its
+  corners. Pictures are cropped to no wider than 8:5 and no taller than 4:5.
+
+Cards are always the light theme, ink on paper, which stands out in both
+light and dark feeds. One accent, as on the site: the orange in the cover
+art, or the play button on a video.
+
+**Which card a page gets.** Posts and team members get their own card.
+Pages listed in `PAGES` in [`cards.ts`](./src/lib/og/cards.ts) (blog, team,
+mission, credits, brand) get theirs; add a new interior page there, with copy
+matching its title block. Everything else (tag pages, 404) uses the site
+card.
+
+**Video posts.** Set `video` in a post's frontmatter: `src` (an MP4 under
+`public/` or an https URL) or `youtube` (an id), plus `poster`, `duration`
+in seconds and optionally `width`, `height` and `captions` (WebVTT). The video
+replaces the cover at the top of the post. The card frames the poster with a
+play button and the running time, and the eyebrow and byline say `Video` and
+the length in place of the reading time. The page announces the video with
+`og:video` (an MP4, or YouTube's embed player), which Slack, Discord and
+Facebook play inline, and a `VideoObject` in the JSON-LD for search. X gets
+the large image card rather than a player card: player cards need X's
+approval and a hosted player page, and the card with the play button leads to
+the post, where the video is.
+
+**Custom cards.** A post can set `ogImage` to a hand-made 1200 × 630 image
+in `src/assets/`, which replaces its generated card. Keep it under 300 KB
+(WhatsApp drops larger previews), and keep the title and lockup inside the
+centre 1000 × 630, as some apps crop the sides.
+
 ## Type
 
 | Token | Size | Use |
@@ -235,3 +282,5 @@ Breakpoints, as literals in media queries:
 - [ ] Images through `<Image>` with `widths` and `sizes`.
 - [ ] Checked at 1440px and 390px wide, in light and dark: no sideways
       scroll, and no table or figure wider than its column.
+- [ ] An interior page: added to `PAGES` in `src/lib/og/cards.ts` so it gets
+      its own social card.

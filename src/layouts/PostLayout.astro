@@ -1,5 +1,5 @@
 ---
-import { Image } from "astro:assets";
+import { Image, getImage } from "astro:assets";
 import { getEntries } from "astro:content";
 import BaseLayout from "./BaseLayout.astro";
 import PageHeader from "../components/PageHeader.astro";
@@ -7,26 +7,74 @@ import Byline from "../components/Byline.astro";
 import FormattedDate from "../components/FormattedDate.astro";
 import TagList from "../components/TagList.astro";
 import ShareLinks from "../components/ShareLinks.astro";
-import type { Post } from "../lib/content";
+import type { Author, SocialVideo } from "../components/BaseHead.astro";
+import { memberUrl, postUrl, readingMinutes, type Post } from "../lib/content";
+import { postSocialImage } from "../lib/og/cards";
+import { formatDuration } from "../lib/og/render";
+import { site } from "../site.config";
 
 export interface Props {
   post: Post;
 }
 const { post } = Astro.props;
-const { title, description, pubDate, updatedDate, authors, tags, cover } = post.data;
-const authorNames = (await getEntries(authors)).map((member) => member.data.name);
-// Reading time at about 230 words a minute, from the raw Markdown body.
-const readingMinutes = Math.max(1, Math.round((post.body ?? "").split(/\s+/).filter(Boolean).length / 230));
+const { title, description, pubDate, updatedDate, authors, tags, cover, video } = post.data;
+const members = await getEntries(authors);
+const people: Author[] = members.map((m) => ({ name: m.data.name, url: memberUrl(m), x: m.data.links.x }));
+const minutes = readingMinutes(post);
+
+const abs = (url: string) => new URL(url, Astro.site).href;
+const image = postSocialImage(post);
+
+// Video posts: the video takes the cover's place. YouTube plays in its
+// privacy-enhanced embed; MP4s play in the browser's own player.
+const youtubeEmbed = video?.youtube && `https://www.youtube-nocookie.com/embed/${video.youtube}`;
+const poster = video && (await getImage({ src: video.poster, width: 1920, format: "jpg" }));
+const socialVideo: SocialVideo | undefined = video && {
+  // For YouTube, its embeddable player, as youtube.com announces its own videos.
+  url: video.src ?? `https://www.youtube.com/embed/${video.youtube}`,
+  type: video.src ? "video/mp4" : "text/html",
+  width: video.width,
+  height: video.height,
+};
+
+const isoDuration = (s: number) => `PT${Math.floor(s / 3600) ? `${Math.floor(s / 3600)}H` : ""}${Math.floor((s % 3600) / 60)}M${s % 60}S`;
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  headline: title,
+  description,
+  url: abs(postUrl(post)),
+  mainEntityOfPage: abs(postUrl(post)),
+  datePublished: pubDate.toISOString(),
+  dateModified: (updatedDate ?? pubDate).toISOString(),
+  author: people.map((p) => ({ "@type": "Person", name: p.name, url: p.url && abs(p.url) })),
+  publisher: { "@type": "Organization", name: site.name, url: Astro.site?.href, logo: abs("/apple-touch-icon.png") },
+  image: abs(image.url),
+  keywords: tags.length ? tags.join(", ") : undefined,
+  ...(video && poster
+    ? {
+        video: {
+          "@type": "VideoObject",
+          name: title,
+          description,
+          thumbnailUrl: [abs(poster.src)],
+          uploadDate: pubDate.toISOString(),
+          duration: isoDuration(video.duration),
+          ...(video.src ? { contentUrl: abs(video.src) } : { embedUrl: `https://www.youtube.com/embed/${video.youtube}` }),
+        },
+      }
+    : {}),
+};
 ---
 
 <BaseLayout
   title={title}
   description={description}
   type="article"
-  publishedTime={pubDate}
-  modifiedTime={updatedDate}
-  authors={authorNames}
-  image={cover?.src}
+  image={image}
+  video={socialVideo}
+  article={{ publishedTime: pubDate, modifiedTime: updatedDate, authors: people, tags }}
+  jsonLd={jsonLd}
 >
   <article class="post">
     <PageHeader heading={title} intro={description} width="prose">
@@ -36,12 +84,31 @@ const readingMinutes = Math.max(1, Math.round((post.body ?? "").split(/\s+/).fil
           {updatedDate && <> · Updated <FormattedDate date={updatedDate} /></>}
         </span>
         <span>By <Byline authors={authors} /></span>
-        <span>{readingMinutes} min read</span>
+        <span>{video ? `${formatDuration(video.duration)} video` : `${minutes} min read`}</span>
         <ShareLinks title={title} />
       </Fragment>
     </PageHeader>
 
-    {cover && (
+    {video ? (
+      <figure class="cover video" style={`aspect-ratio: ${video.width} / ${video.height}`}>
+        {youtubeEmbed ? (
+          <iframe
+            src={youtubeEmbed}
+            title={title}
+            loading="lazy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen
+          />
+        ) : (
+          <video controls playsinline preload="metadata" poster={poster?.src} width={video.width} height={video.height} aria-label={title}>
+            <source src={video.src} type="video/mp4" />
+            {video.captions && <track kind="captions" src={video.captions} srclang={site.locale} label="English" default />}
+            <a href={video.src}>Download the video</a>
+          </video>
+        )}
+      </figure>
+    ) : cover && (
       <figure class="cover">
         <Image src={cover} alt="" widths={[720, 1084, 2168]} sizes="(max-width: 1100px) 100vw, 1084px" />
       </figure>
@@ -58,7 +125,9 @@ const readingMinutes = Math.max(1, Math.round((post.body ?? "").split(/\s+/).fil
 </BaseLayout>
 
 <style>
-  /* A cover image keeps the full content width. */
+  /* A cover image or video keeps the full content width. */
   .cover { margin-bottom: var(--space-7); border: 1px solid var(--rule); }
+  .video { background: var(--surface); }
+  .video iframe, .video video { display: block; width: 100%; height: 100%; border: 0; }
   .post-footer { margin-top: var(--space-8); padding-top: var(--space-5); border-top: 1px solid var(--rule); }
 </style>

@@ -1,48 +1,68 @@
 ---
+/**
+ * Everything in <head>: the title and description, the canonical URL, and
+ * what link previews show (Open Graph, X) and search engines read (JSON-LD).
+ *
+ * Every page gets a social card: pass `image`, or the page gets its own card
+ * from src/lib/og/cards.ts by path, falling back to the site card. Posts
+ * pass `article` and, for video posts, `video`.
+ */
 import { site } from "../site.config";
+import { defaultSocialImage, type SocialImage } from "../lib/og/cards";
+
+export interface Author {
+  name: string;
+  /** Their page on this site; absolute or root-relative. */
+  url?: string;
+  /** Their X profile, for twitter:creator. */
+  x?: string;
+}
+
+export interface SocialVideo {
+  /** An MP4 file (video/mp4) or an embeddable player page (text/html). */
+  url: string;
+  type: "video/mp4" | "text/html";
+  width: number;
+  height: number;
+}
 
 export interface Props {
   title?: string;
   description?: string;
-  /** Absolute or root-relative URL of the social preview image. */
-  image?: string;
+  image?: SocialImage;
   type?: "website" | "article" | "profile";
-  publishedTime?: Date;
-  modifiedTime?: Date;
-  authors?: string[];
+  article?: {
+    publishedTime: Date;
+    modifiedTime?: Date;
+    authors: Author[];
+    tags?: string[];
+  };
+  video?: SocialVideo;
+  /** schema.org data for the page; the home page describes the WebSite. */
+  jsonLd?: Record<string, unknown>;
   noindex?: boolean;
 }
 
-const {
-  title,
-  description = site.description,
-  image,
-  type = "website",
-  publishedTime,
-  modifiedTime,
-  authors = [],
-  noindex = false,
-} = Astro.props;
+const { title, description = site.description, type = "website", article, video, noindex = false } = Astro.props;
+
+const abs = (url: string) => new URL(url, Astro.site).href;
+/** "@handle" from an X profile URL. */
+const handle = (url?: string) => {
+  const name = url?.match(/(?:x|twitter)\.com\/(\w+)/)?.[1];
+  return name ? `@${name}` : undefined;
+};
 
 const fullTitle = title ? `${title} · ${site.name}` : site.name;
 const canonical = new URL(Astro.url.pathname, Astro.site);
-const imageUrl = image ? new URL(image, Astro.site).href : undefined;
+const image = Astro.props.image ?? defaultSocialImage(Astro.url.pathname, title);
+const imageUrl = abs(image.url);
+const creator = article?.authors.map((a) => handle(a.x)).find(Boolean);
 
 const jsonLd =
-  type === "article"
-    ? {
-        "@context": "https://schema.org",
-        "@type": "BlogPosting",
-        headline: title,
-        description,
-        url: canonical.href,
-        datePublished: publishedTime?.toISOString(),
-        dateModified: (modifiedTime ?? publishedTime)?.toISOString(),
-        author: authors.map((name) => ({ "@type": "Person", name })),
-        publisher: { "@type": "Organization", name: site.name },
-        image: imageUrl,
-      }
-    : { "@context": "https://schema.org", "@type": "WebSite", name: site.name, url: Astro.site?.href };
+  Astro.props.jsonLd ??
+  (Astro.url.pathname === "/"
+    ? { "@context": "https://schema.org", "@type": "WebSite", name: site.name, url: Astro.site?.href, description: site.description, image: imageUrl }
+    : undefined);
 ---
 
 <meta charset="utf-8" />
@@ -58,24 +78,48 @@ const jsonLd =
 <meta name="description" content={description} />
 <link rel="canonical" href={canonical} />
 {noindex && <meta name="robots" content="noindex, follow" />}
+{article && <meta name="author" content={article.authors.map((a) => a.name).join(", ")} />}
 
+<!-- Open Graph: Facebook, LinkedIn, Slack, Discord, iMessage, WhatsApp and most others. -->
 <meta property="og:site_name" content={site.name} />
 <meta property="og:type" content={type} />
 <meta property="og:title" content={title ?? site.name} />
 <meta property="og:description" content={description} />
 <meta property="og:url" content={canonical} />
-<meta property="og:locale" content={site.locale} />
-{imageUrl && <meta property="og:image" content={imageUrl} />}
-{publishedTime && <meta property="article:published_time" content={publishedTime.toISOString()} />}
-{modifiedTime && <meta property="article:modified_time" content={modifiedTime.toISOString()} />}
-{authors.map((name) => <meta property="article:author" content={name} />)}
+<meta property="og:locale" content={site.ogLocale} />
+<meta property="og:image" content={imageUrl} />
+<meta property="og:image:type" content={image.type} />
+<meta property="og:image:width" content={String(image.width)} />
+<meta property="og:image:height" content={String(image.height)} />
+<meta property="og:image:alt" content={image.alt} />
+{video && (
+  <>
+    <meta property="og:video" content={abs(video.url)} />
+    <meta property="og:video:secure_url" content={abs(video.url)} />
+    <meta property="og:video:type" content={video.type} />
+    <meta property="og:video:width" content={String(video.width)} />
+    <meta property="og:video:height" content={String(video.height)} />
+  </>
+)}
+{article && (
+  <>
+    <meta property="article:published_time" content={article.publishedTime.toISOString()} />
+    {article.modifiedTime && <meta property="article:modified_time" content={article.modifiedTime.toISOString()} />}
+    {article.authors.map((a) => <meta property="article:author" content={a.url ? abs(a.url) : a.name} />)}
+    {article.tags?.map((tag) => <meta property="article:tag" content={tag} />)}
+  </>
+)}
 
-<meta name="twitter:card" content={imageUrl ? "summary_large_image" : "summary"} />
+<!-- X reads Open Graph for the rest; these pick the large card and credit the accounts. -->
+<meta name="twitter:card" content="summary_large_image" />
+{handle(site.social.x) && <meta name="twitter:site" content={handle(site.social.x)} />}
+{creator && <meta name="twitter:creator" content={creator} />}
 <meta name="twitter:title" content={title ?? site.name} />
 <meta name="twitter:description" content={description} />
-{imageUrl && <meta name="twitter:image" content={imageUrl} />}
+<meta name="twitter:image" content={imageUrl} />
+<meta name="twitter:image:alt" content={image.alt} />
 
-<script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+{jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
 
 <!-- Set the theme before first paint so there is no flash. A saved "light" or
      "dark" wins; otherwise (Auto) follow the system preference. -->

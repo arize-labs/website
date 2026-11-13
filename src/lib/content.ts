@@ -34,6 +34,10 @@ export async function getTags(): Promise<{ name: string; slug: string; count: nu
   return [...counts.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
+/** Reading time at about 230 words a minute, from the raw Markdown body. */
+export const readingMinutes = (post: Post) =>
+  Math.max(1, Math.round((post.body ?? "").split(/\s+/).filter(Boolean).length / 230));
+
 export const postUrl = (post: Post) => `/blog/${post.id}`;
 export const memberUrl = (member: Member | { id: string }) => `/team/${member.id}`;
 export const tagUrl = (tag: string) => `/blog/tags/${tagSlug(tag)}`;

@@ -5,7 +5,8 @@ import { render } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import PostCard from "../../components/PostCard.astro";
 import SocialLinks, { type Network } from "../../components/SocialLinks.astro";
-import { getPostsByAuthor, getTeam, type Member } from "../../lib/content";
+import { getPostsByAuthor, getTeam, memberUrl, type Member } from "../../lib/content";
+import { memberSocialImage } from "../../lib/og/cards";
 
 export const getStaticPaths = (async () => {
   const team = await getTeam();
@@ -23,9 +24,23 @@ const NETWORK_NAMES: Record<Network, string> = { github: "GitHub", x: "X", linke
 const linkList = (Object.entries(links) as [Network, string | undefined][])
   .filter((entry): entry is [Network, string] => !!entry[1])
   .map(([network, href]) => ({ network, href, name: network === "website" ? `${name}'s website` : `${name} on ${NETWORK_NAMES[network]}` }));
+const image = memberSocialImage(member);
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "ProfilePage",
+  url: new URL(memberUrl(member), Astro.site).href,
+  mainEntity: {
+    "@type": "Person",
+    name,
+    jobTitle: role,
+    worksFor: { "@type": "Organization", name: "Arize Labs", url: Astro.site?.href },
+    image: new URL(image.url, Astro.site).href,
+    sameAs: linkList.map((l) => l.href),
+  },
+};
 ---
 
-<BaseLayout title={name} description={`${name}, ${role} at Arize Labs.`} type="profile">
+<BaseLayout title={name} description={`${name}, ${role} at Arize Labs.`} type="profile" image={image} jsonLd={jsonLd}>
   <article class="profile">
     <figure class="headshot">
       {avatar ? <Image src={avatar} alt="" widths={[400, 800]} sizes="(max-width: 840px) 60vw, 360px" /> : <span class="placeholder">[ photo ]</span>}
