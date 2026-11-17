@@ -106,7 +106,7 @@ a { color: inherit; }
 .prose pre { padding: var(--space-4); overflow-x: auto; font-size: var(--text-small); line-height: 1.5; border: 1px solid var(--rule); }
 /* Copy button on code blocks (added by CodeCopy.astro). It sits in the
    wrapper, not the pre, so it stays in the corner while the code scrolls.
-   With a mouse it shows on hover or focus; on touch screens, always. */
+   With a mouse it shows on hover, or when the block or button has focus; on touch screens, always. */
 .prose .code-block { position: relative; }
 .code-copy {
   position: absolute;
@@ -123,7 +123,7 @@ a { color: inherit; }
   opacity: 0;
   transition: opacity 120ms;
 }
-.code-block:hover .code-copy, .code-copy:focus-visible, .code-copy[data-state] { opacity: 1; }
+.code-block:hover .code-copy, .code-block:focus-within .code-copy, .code-copy[data-state] { opacity: 1; }
 @media (hover: none) { .code-copy { opacity: 1; } }
 .code-copy:hover { color: var(--fg); border-color: var(--fg); }
 .code-copy:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }

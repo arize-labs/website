@@ -22,12 +22,12 @@
     const button = document.createElement("button");
     button.type = "button";
     button.className = "code-copy";
-    button.setAttribute("aria-label", "Copy code to clipboard");
-    const label = document.createElement("span");
-    label.setAttribute("aria-live", "polite");
-    label.textContent = LABEL;
-    button.append(label);
-    wrapper.append(button);
+    button.textContent = LABEL;
+    // Announced separately: a button's contents aren't a reliable live region.
+    const status = document.createElement("span");
+    status.className = "visually-hidden";
+    status.setAttribute("role", "status");
+    wrapper.append(button, status);
 
     let timer: number | undefined;
     button.addEventListener("click", async () => {
@@ -38,11 +38,13 @@
       } catch {
         copied = false;
       }
-      label.textContent = copied ? "Copied" : "Copy failed";
+      button.textContent = copied ? "Copied" : "Copy failed";
+      status.textContent = copied ? "Code copied to clipboard" : "Couldn't copy the code";
       button.dataset.state = copied ? "copied" : "failed";
       clearTimeout(timer);
       timer = window.setTimeout(() => {
-        label.textContent = LABEL;
+        button.textContent = LABEL;
+        status.textContent = "";
         delete button.dataset.state;
       }, RESET_MS);
     });
