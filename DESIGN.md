@@ -90,7 +90,9 @@ elements inside a single post.
 - **Asides and summaries.** A TL;DR or a note goes in
   [`<Callout title="…">`](./src/components/Callout.astro) (MDX only).
 - **Code.** Fenced blocks with a language, highlighted with the Pierre theme
-  in both light and dark.
+  in both light and dark. Every block gets a Copy button in its top-right
+  corner ([`CodeCopy`](./src/components/CodeCopy.astro)), shown on hover or
+  focus, and always on touch screens.
 - **Quotes.** `>` blockquotes: an accent rule on the left, `--soft` text.
 
 ## Figures

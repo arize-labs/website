@@ -1,0 +1,50 @@
+---
+/**
+ * Adds a Copy button to every code block in long-form content. The button
+ * needs JavaScript, so the script adds it; without JS, code blocks are
+ * unchanged. Each block is wrapped so the button stays put while the code
+ * scrolls sideways. Styles are in global.css, next to the code block styles.
+ */
+---
+
+<script>
+  const LABEL = "Copy";
+  const RESET_MS = 2000;
+
+  document.querySelectorAll<HTMLPreElement>(".prose pre").forEach((pre) => {
+    if (pre.parentElement?.classList.contains("code-block")) return;
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "code-block";
+    pre.replaceWith(wrapper);
+    wrapper.append(pre);
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "code-copy";
+    button.setAttribute("aria-label", "Copy code to clipboard");
+    const label = document.createElement("span");
+    label.setAttribute("aria-live", "polite");
+    label.textContent = LABEL;
+    button.append(label);
+    wrapper.append(button);
+
+    let timer: number | undefined;
+    button.addEventListener("click", async () => {
+      const text = (pre.querySelector("code") ?? pre).textContent ?? "";
+      let copied = true;
+      try {
+        await navigator.clipboard.writeText(text.replace(/\n$/, ""));
+      } catch {
+        copied = false;
+      }
+      label.textContent = copied ? "Copied" : "Copy failed";
+      button.dataset.state = copied ? "copied" : "failed";
+      clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        label.textContent = LABEL;
+        delete button.dataset.state;
+      }, RESET_MS);
+    });
+  });
+</script>
