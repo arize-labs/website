@@ -10,7 +10,11 @@ html[data-lb-open] { overflow: hidden; scrollbar-gutter: stable; }
 
 /* The box an image (or other item) sits in, so its button can take the corner. */
 .lb-frame { position: relative; display: block; }
-.lb-frame > img { cursor: zoom-in; }
+/* An image's box hugs the image, so the button sits on its corner rather than
+   the column's; in a figure or a gallery cell it fills the width as before. */
+.lb-frame-img { width: fit-content; max-width: 100%; }
+:is(figure, li) > .lb-frame-img { width: auto; }
+.lb-frame-img img { cursor: zoom-in; }
 
 /* The same 30px square as a figure's play buttons, shown like a code block's
    Copy button: on hover or focus with a mouse, always on touch screens. */
@@ -84,7 +88,8 @@ img[data-lb-active] { visibility: hidden; }
   -webkit-backdrop-filter: blur(var(--space-3));
   backdrop-filter: blur(var(--space-3));
 }
-.lb > :not(.lb-veil) { position: relative; z-index: 1; }
+/* Not the figures' tooltip, which behaviors.ts moves in here while a figure is open. */
+.lb > :not(.lb-veil, .fig-tip) { position: relative; z-index: 1; }
 
 /* Top bar: where you are, and the way out. */
 .lb-top {
@@ -161,6 +166,9 @@ img[data-lb-active] { visibility: hidden; }
   overflow: auto;
   overscroll-behavior: contain;
 }
+/* Auto margins centre the item but, unlike place-items alone, start it at the
+   top-left when it's bigger than the slide, so all of it can be scrolled to. */
+.lb-slide > * { margin: auto; }
 
 /* Images: on the figure ground, framed like a figure. */
 .lb-media {
@@ -172,7 +180,7 @@ img[data-lb-active] { visibility: hidden; }
 .lb-media img { display: block; max-width: none; }
 
 /* Live items (figures, anything with data-lightbox): the real element, moved in. */
-.lb .lb-slide > .lb-live { max-width: none; margin: 0; }
+.lb .lb-slide > .lb-live { max-width: none; margin: auto; }
 .lb .lb-live > .fig-frame { box-shadow: var(--lb-shadow); }
 .lb .lb-live > figcaption, .lb .lb-live > .lb-expand, .lb .lb-live [data-fig-expand] { display: none; }
 /* Full screen is the overview: diagrams fit rather than scroll (pinch to zoom on a phone). */

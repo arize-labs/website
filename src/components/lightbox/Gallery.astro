@@ -64,7 +64,8 @@ const sizes = `(max-width: 720px) 50vw, ${thumb}px`;
     max-width: none;
     margin-inline: calc((100% - var(--g-w)) / 2);
   }
-  ul {
+  /* Scoped under .gallery so they outrank .prose ul's indent, whatever the stylesheet order. */
+  .gallery ul {
     display: grid;
     grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
     gap: var(--space-3);
@@ -72,7 +73,7 @@ const sizes = `(max-width: 720px) 50vw, ${thumb}px`;
     padding: 0;
     list-style: none;
   }
-  li { margin: 0; }
+  .gallery li { margin: 0; }
   .gallery :global(img) {
     width: 100%;
     aspect-ratio: var(--aspect);
@@ -80,6 +81,6 @@ const sizes = `(max-width: 720px) 50vw, ${thumb}px`;
     border: 1px solid var(--rule);
   }
   @media (max-width: 720px) {
-    ul { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+    .gallery ul { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
   }
 </style>

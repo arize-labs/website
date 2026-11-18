@@ -59,7 +59,9 @@ interface Slide {
   el: HTMLElement;
   /** The image or moved element: what the open and close animations move. */
   content: HTMLElement;
+  /** Live items: puts the element back, and the placeholder holding its place. */
   restore?: () => void;
+  ph?: HTMLElement;
 }
 
 const DEFAULT_GROUP = "page";
@@ -98,12 +100,14 @@ const icon = (name: keyof typeof ICONS) => `<svg viewBox="0 0 16 16" aria-hidden
 
 const groupOf = (el: HTMLElement) => el.closest<HTMLElement>("[data-lightbox-group]")?.dataset.lightboxGroup || DEFAULT_GROUP;
 
+/** The "View full screen" button enrol() put in the item's box. */
+const buttonOf = (el: HTMLElement) => el.closest(".lb-frame")?.querySelector<HTMLElement>(":scope > .lb-expand") ?? undefined;
+
 function captionOf(el: HTMLElement, own?: HTMLElement | null): () => Node[] {
   return () => {
     const text = el.dataset.lightboxCaption;
     if (text) return [document.createTextNode(text)];
-    const fc = own ?? null;
-    return fc ? Array.from(fc.childNodes, (n) => n.cloneNode(true)) : [];
+    return own ? Array.from(own.childNodes, (n) => n.cloneNode(true)) : [];
   };
 }
 
@@ -115,16 +119,21 @@ function figNumber(fig: HTMLElement) {
 function itemFor(el: HTMLElement): Item {
   if (el instanceof HTMLImageElement) {
     const figure = el.closest("figure");
+    // Both sides from the attributes or both from the file, never one of each,
+    // so the image keeps its shape.
+    const aw = Number(el.getAttribute("width"));
+    const ah = Number(el.getAttribute("height"));
+    const [width, height] = aw && ah ? [aw, ah] : [el.naturalWidth, el.naturalHeight];
     return {
       kind: "image",
       source: el,
-      button: el.parentElement?.querySelector<HTMLElement>(":scope > .lb-expand") ?? undefined,
+      button: buttonOf(el),
       image: {
         src: el.dataset.lightboxSrc || el.currentSrc || el.src,
         srcset: el.dataset.lightboxSrc ? undefined : el.srcset || undefined,
         alt: el.alt,
-        width: Number(el.getAttribute("width")) || el.naturalWidth || undefined,
-        height: Number(el.getAttribute("height")) || el.naturalHeight || undefined,
+        width: width || undefined,
+        height: height || undefined,
       },
       title: el.dataset.lightboxTitle || el.alt || "Image",
       caption: captionOf(el, figure?.querySelector<HTMLElement>(":scope > figcaption")),
@@ -145,7 +154,7 @@ function itemFor(el: HTMLElement): Item {
   return {
     kind: "live",
     source: el,
-    button: el.querySelector<HTMLElement>(":scope > .lb-expand") ?? undefined,
+    button: buttonOf(el),
     title: el.dataset.lightboxTitle || el.getAttribute("aria-label") || "Item",
     caption: captionOf(el, el.querySelector<HTMLElement>(":scope > figcaption")),
   };
@@ -170,6 +179,9 @@ function expandButton(label: string) {
   return b;
 }
 
+/** Items whose button can't go inside them. */
+const BOXED = "img, picture, video, audio, iframe, canvas, embed, object, svg, table";
+
 function enroll(el: HTMLElement) {
   if (el.dataset.lbReady !== undefined || el.closest(".lb, [data-lightbox-off]")) return;
   // Images keep their link, and images inside a figure or another item go with it.
@@ -187,19 +199,24 @@ function enroll(el: HTMLElement) {
   el.dataset.lbReady = "";
   const isImage = el instanceof HTMLImageElement;
   // The button needs a positioned box around the item to sit in its corner.
+  // Images, media and tables can't hold it (their children aren't drawn, or
+  // break the table), so they get a box of their own; an image in a <picture>
+  // is boxed with its <picture>, so it keeps its sources.
   let frame = el;
-  if (isImage) {
+  if (el.matches(BOXED)) {
+    const box = isImage && el.parentElement instanceof HTMLPictureElement ? el.parentElement : el;
     frame = document.createElement("span");
-    frame.className = "lb-frame";
-    el.replaceWith(frame);
-    frame.append(el);
-    el.addEventListener("click", () => openLightbox(el));
+    frame.className = isImage ? "lb-frame lb-frame-img" : "lb-frame";
+    box.replaceWith(frame);
+    frame.append(box);
   } else {
     el.classList.add("lb-frame");
   }
-  const title = isImage ? (el as HTMLImageElement).alt : el.dataset.lightboxTitle;
-  frame.append(expandButton(title ? `View full screen: ${title}` : "View full screen"));
-  frame.querySelector(":scope > .lb-expand")!.addEventListener("click", () => openLightbox(el));
+  if (isImage) el.addEventListener("click", () => openLightbox(el));
+  const title = el.dataset.lightboxTitle || (isImage ? (el as HTMLImageElement).alt : "");
+  const button = expandButton(title ? `View full screen: ${title}` : "View full screen");
+  button.addEventListener("click", () => openLightbox(el));
+  frame.append(button);
 }
 
 /** Enrol everything under root. Safe to call again after adding content. */
@@ -313,7 +330,7 @@ class Viewer {
     this.renderThumbs();
     const slide = this.mount(item);
     this.current = slide;
-    this.sync();
+    this.sync(true);
     this.dialog.focus({ preventScroll: true });
 
     const anims = [
@@ -342,7 +359,7 @@ class Viewer {
     const item = slide.item;
 
     // Land the page on the item being viewed, so the reader is where they browsed to.
-    const target = slide.restore ? this.placeholderOf(slide) : item.source;
+    const target = slide.ph ?? item.source;
     if (target) {
       const r = target.getBoundingClientRect();
       if (r.bottom < 0 || r.top > innerHeight) target.scrollIntoView({ block: "center", behavior: "instant" });
@@ -369,7 +386,7 @@ class Viewer {
   private flip(el: HTMLElement, rect: DOMRect | undefined, dir: "in" | "out") {
     const here = el.getBoundingClientRect();
     let frames: Keyframe[];
-    if (rect && rect.width > 0 && !reduced()) {
+    if (rect && rect.width > 0 && here.width > 0 && !reduced()) {
       const s = rect.width / here.width;
       const away = { transformOrigin: "0 0", transform: `translate(${rect.left - here.left}px, ${rect.top - here.top}px) scale(${s})` };
       const home = { transformOrigin: "0 0", transform: "none" };
@@ -410,7 +427,15 @@ class Viewer {
         hi.src = spec.src;
         hi.decode().then(() => (img.src = hi.currentSrc || hi.src), () => {});
       }
-      if (!spec.width) img.addEventListener("load", () => this.current?.content === media && this.fit(this.current), { once: true });
+      img.addEventListener("load", () => {
+        // The attributes give the page's size; the file shown can be bigger
+        // (data-lightbox-src), and is only capped at its own size.
+        if (!spec.srcset && img.naturalWidth > (spec.width ?? 0)) {
+          spec.width = img.naturalWidth;
+          spec.height = img.naturalHeight;
+        }
+        if (this.current?.content === media) this.fit(this.current);
+      });
       item.source?.setAttribute("data-lb-active", "");
       const slide: Slide = { item, el, content: media };
       this.fit(slide);
@@ -436,6 +461,7 @@ class Viewer {
       item,
       el,
       content: src,
+      ph,
       restore: () => {
         src.classList.remove("lb-live");
         if (style === null) src.removeAttribute("style");
@@ -444,13 +470,8 @@ class Viewer {
         ph.remove();
       },
     };
-    (slide as Slide & { ph: HTMLElement }).ph = ph;
     this.fit(slide);
     return slide;
-  }
-
-  private placeholderOf(slide: Slide) {
-    return (slide as Slide & { ph?: HTMLElement }).ph;
   }
 
   private unmount(slide: Slide) {
@@ -468,12 +489,16 @@ class Viewer {
     if (w <= 0 || h <= 0) return;
 
     if (slide.item.kind === "image") {
-      const img = slide.content.querySelector("img")!;
+      const media = slide.content;
+      const img = media.querySelector("img")!;
       const iw = slide.item.image!.width || img.naturalWidth;
       const ih = slide.item.image!.height || img.naturalHeight;
       if (!iw || !ih) return;
+      // The frame's border is outside the image, so leave room for it.
+      const bw = media.offsetWidth - media.clientWidth;
+      const bh = media.offsetHeight - media.clientHeight;
       // Never past the file's own size, so screenshots stay crisp.
-      const s = Math.min(w / iw, h / ih, 1);
+      const s = Math.min((w - bw) / iw, (h - bh) / ih, 1);
       img.style.width = `${Math.floor(iw * s)}px`;
       img.style.height = `${Math.floor(ih * s)}px`;
       return;
@@ -545,7 +570,7 @@ class Viewer {
   }
 
   /** Update the counter, buttons, caption, thumbnails and announcement for the current item. */
-  private sync() {
+  private sync(opening = false) {
     const n = this.items.length;
     const item = this.items[this.index];
     this.count.innerHTML = `<b>${pad2(this.index + 1)}</b> / ${pad2(n)}`;
@@ -561,7 +586,7 @@ class Viewer {
       if (i === this.index) {
         t.setAttribute("aria-current", "true");
         const left = t.offsetLeft - (this.thumbs.clientWidth - t.offsetWidth) / 2;
-        this.thumbs.scrollTo({ left, behavior: this.opening || reduced() ? "instant" : "smooth" });
+        this.thumbs.scrollTo({ left, behavior: opening || reduced() ? "instant" : "smooth" });
       } else t.removeAttribute("aria-current");
     });
   }
@@ -582,9 +607,16 @@ class Viewer {
 
     if (item.kind === "image") {
       const img = document.createElement("img");
-      img.src = (item.source as HTMLImageElement | undefined)?.currentSrc || item.image!.src;
       img.alt = "";
+      // Lazy before src, or it loads at once; and the srcset, so an image the
+      // page hasn't loaded yet comes in at thumbnail size, not full size.
       img.loading = "lazy";
+      const own = (item.source as HTMLImageElement | undefined)?.currentSrc;
+      if (!own && item.image!.srcset) {
+        img.sizes = "72px";
+        img.srcset = item.image!.srcset;
+      }
+      img.src = own || item.image!.src;
       b.append(img);
       return b;
     }
@@ -733,7 +765,8 @@ export function openLightbox(target: HTMLElement | ImageSpec[], index = 0) {
   if (Array.isArray(target)) {
     const items: Item[] = target.map((spec) => ({
       kind: "image",
-      image: spec,
+      // A copy: the viewer fills in sizes once the file loads.
+      image: { ...spec },
       title: spec.alt || "Image",
       caption: () => (spec.caption ? [document.createTextNode(spec.caption)] : []),
     }));
@@ -741,6 +774,9 @@ export function openLightbox(target: HTMLElement | ImageSpec[], index = 0) {
     return;
   }
   if (target.dataset.lbReady === undefined) enroll(target);
+  // Something that can't be enrolled (in a link, under data-lightbox-off)
+  // opens on its own, rather than as whatever comes first in its group.
+  if (target.dataset.lbReady === undefined) return viewer.open([itemFor(target)], 0);
   const { items, index: at } = sequenceFor(target);
   viewer.open(items, at);
 }

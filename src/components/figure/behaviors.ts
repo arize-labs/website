@@ -25,8 +25,12 @@ function tipEl() {
 /** The text the tooltip holds and its measured size; rebuilt only when the text changes. */
 let shown: { text: string; w: number; h: number } | null = null;
 
-function showTip(text: string, x: number, y: number) {
+function showTip(host: Element, text: string, x: number, y: number) {
   const t = tipEl();
+  // A figure open full screen sits in a modal dialog, in the top layer above
+  // the body, so the tip has to be inside that dialog to show over it.
+  const layer = host.closest("dialog[open]") ?? document.body;
+  if (t.parentElement !== layer) layer.append(t);
   if (shown?.text !== text) {
     t.replaceChildren(
       ...text.split("\n").map((line, i) => {
@@ -56,22 +60,23 @@ function hideTip() {
 function wireTooltips() {
   document.addEventListener("pointermove", (e) => {
     const host = (e.target as Element | null)?.closest?.<HTMLElement>("[data-tip]");
-    if (host && e.pointerType !== "touch") showTip(host.dataset.tip ?? "", e.clientX, e.clientY);
+    if (host && e.pointerType !== "touch") showTip(host, host.dataset.tip ?? "", e.clientX, e.clientY);
     else hideTip();
   });
   document.addEventListener("pointerdown", (e) => {
     const host = (e.target as Element | null)?.closest?.<HTMLElement>("[data-tip]");
-    if (host && e.pointerType === "touch") showTip(host.dataset.tip ?? "", e.clientX, e.clientY);
+    if (host && e.pointerType === "touch") showTip(host, host.dataset.tip ?? "", e.clientX, e.clientY);
     else if (!host) hideTip();
   });
   document.addEventListener("focusin", (e) => {
     const host = (e.target as Element | null)?.closest?.<HTMLElement>("[data-tip]");
     if (!host) return hideTip();
     const r = host.getBoundingClientRect();
-    showTip(host.dataset.tip ?? "", r.left + Math.min(r.width, 240) / 2, r.bottom - 6);
+    showTip(host, host.dataset.tip ?? "", r.left + Math.min(r.width, 240) / 2, r.bottom - 6);
   });
   document.addEventListener("focusout", hideTip);
-  window.addEventListener("scroll", hideTip, { passive: true });
+  // Capture, so scrolling inside a box (a full screen figure's slide) hides it too.
+  document.addEventListener("scroll", hideTip, { capture: true, passive: true });
 }
 
 function regrow(scope: Element) {
