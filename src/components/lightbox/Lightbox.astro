@@ -1,0 +1,14 @@
+---
+/**
+ * Loads the full screen viewer on every page (BaseLayout). Images in prose,
+ * the post cover, every figure and anything marked data-lightbox get a
+ * "View full screen" button. Without JavaScript, nothing changes. See
+ * lightbox.ts for the attributes, and DESIGN.md, "Full screen".
+ */
+import "./lightbox.css";
+---
+
+<script>
+  import { initLightbox } from "./lightbox";
+  initLightbox();
+</script>

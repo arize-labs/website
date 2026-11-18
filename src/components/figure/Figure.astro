@@ -1,7 +1,7 @@
 ---
 /**
  * The frame every figure in a post sits in: a numbered mono caps title, the
- * figure itself on a frame with registration corners, an optional status
+ * figure itself on a ruled frame, an optional status
  * line (what an animated figure is showing right now) and a caption.
  *
  *   <Figure title="The tool calling loop" width="wide" scene="tool-calling-loop"
@@ -11,7 +11,8 @@
  *   </Figure>
  *
  * Figures number themselves (Fig. 01, 02, ...) in the order they appear in
- * the post. See DESIGN.md, "Figures".
+ * the post. Every figure gets a "View full screen" button, revealed by the
+ * lightbox script. See DESIGN.md, "Figures" and "Full screen".
  */
 import "./figure.css";
 import { tagSlug } from "../../lib/content";
@@ -36,16 +37,21 @@ const id = `fig-${tagSlug(title).slice(0, 48)}`;
 <figure class="fig" id={id} data-width={width} data-scene={scene} aria-labelledby={`${id}-title`}>
   <div class="fig-head">
     <p class="fig-title" id={`${id}-title`}><span class="fig-num" aria-hidden="true"></span>{title}</p>
-    {scene && (
-      <div class="fig-controls">
-        <button type="button" class="fig-btn" data-fig-action="toggle" data-icon="play" aria-label="Play animation" title="Play animation" hidden>
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path class="i-play" d="M5 3.5v9l7-4.5z" /><path class="i-pause" d="M5 3.5h2v9H5zM9 3.5h2v9H9z" /></svg>
-        </button>
-        <button type="button" class="fig-btn" data-fig-action="replay" aria-label="Replay animation" title="Replay animation" hidden>
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 8a4.8 4.8 0 1 0 1.4-3.4M3 2.5v2.8h2.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
-        </button>
-      </div>
-    )}
+    <div class="fig-controls">
+      {scene && (
+        <>
+          <button type="button" class="fig-btn" data-fig-action="toggle" data-icon="play" aria-label="Play animation" title="Play animation" hidden>
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path class="i-play" d="M5 3.5v9l7-4.5z" /><path class="i-pause" d="M5 3.5h2v9H5zM9 3.5h2v9H9z" /></svg>
+          </button>
+          <button type="button" class="fig-btn" data-fig-action="replay" aria-label="Replay animation" title="Replay animation" hidden>
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 8a4.8 4.8 0 1 0 1.4-3.4M3 2.5v2.8h2.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          </button>
+        </>
+      )}
+      <button type="button" class="fig-btn" data-fig-expand aria-label={`View full screen: ${title}`} title="View full screen" hidden>
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+      </button>
+    </div>
   </div>
   <div class="fig-frame" data-ground={ground}>
     <div class="fig-body"><slot /></div>

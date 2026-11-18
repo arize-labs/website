@@ -64,20 +64,6 @@
   background: var(--fig-ground);
   border: 1px solid var(--rule);
 }
-/* Registration crosses on the four corners, as on the page markings. */
-.fig-frame::before {
-  --c: linear-gradient(var(--fig-line-strong), var(--fig-line-strong));
-  content: "";
-  position: absolute;
-  inset: -6px;
-  pointer-events: none;
-  background:
-    var(--c) left 0 top 5.5px / 13px 1px, var(--c) left 5.5px top 0 / 1px 13px,
-    var(--c) right 0 top 5.5px / 13px 1px, var(--c) right 5.5px top 0 / 1px 13px,
-    var(--c) left 0 bottom 5.5px / 13px 1px, var(--c) left 5.5px bottom 0 / 1px 13px,
-    var(--c) right 0 bottom 5.5px / 13px 1px, var(--c) right 5.5px bottom 0 / 1px 13px;
-  background-repeat: no-repeat;
-}
 .fig-body { padding: var(--space-6); overflow-x: auto; }
 .fig-frame[data-ground="dots"] .fig-body {
   background-image: var(--fig-dot-ground);

@@ -55,6 +55,10 @@
   --fig-texture: color-mix(in srgb, var(--fg) 55%, transparent);
   --fig-accent-soft: color-mix(in srgb, var(--accent) 14%, var(--surface));
 
+  /* Full screen viewer (lightbox): the ground over the page, and the lift of the item on it. */
+  --lb-veil: color-mix(in srgb, var(--bg) 93%, transparent);
+  --lb-shadow: 0 24px 64px -28px color-mix(in srgb, var(--color-ink) 32%, transparent);
+
   /* Type */
   --font-sans: "Urbanist Variable", "Urbanist", system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -111,6 +115,7 @@
   --card-solid: color-mix(in srgb, var(--bg), #fff 4.5%);
   --dot: color-mix(in srgb, var(--fg) 13%, transparent);
   --fig-dot: color-mix(in srgb, var(--fg) 6%, transparent);
+  --lb-shadow: 0 24px 64px -28px color-mix(in srgb, #000 70%, transparent);
   --marking-opacity: 0.12;
   color-scheme: dark;
 }
@@ -128,6 +133,7 @@
     --card-solid: color-mix(in srgb, var(--bg), #fff 4.5%);
     --dot: color-mix(in srgb, var(--fg) 13%, transparent);
     --fig-dot: color-mix(in srgb, var(--fg) 6%, transparent);
+    --lb-shadow: 0 24px 64px -28px color-mix(in srgb, #000 70%, transparent);
     --marking-opacity: 0.12;
     color-scheme: dark;
   }

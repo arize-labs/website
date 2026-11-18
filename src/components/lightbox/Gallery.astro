@@ -1,0 +1,85 @@
+---
+/**
+ * A grid of images that browse as their own sequence full screen.
+ *
+ *   <Gallery
+ *     caption="Three runs of the same task."
+ *     items={[
+ *       { src: runA, alt: "…", caption: "Run A: the agent reads the schema first." },
+ *       { src: runB, alt: "…", caption: "Run B: …" },
+ *     ]}
+ *   />
+ *
+ * Thumbnails are cropped to `aspect`; full screen shows each image whole,
+ * with its own caption (or the gallery's, if it has none). Arrow keys,
+ * swipes and the thumbnail strip move between them. See DESIGN.md, "Full screen".
+ */
+import type { ImageMetadata } from "astro";
+import { Image } from "astro:assets";
+
+export interface Props {
+  items: { src: ImageMetadata; alt: string; caption?: string }[];
+  /** Under the grid, for the gallery as a whole. */
+  caption?: string;
+  /** Columns at full width; two on phones. */
+  columns?: 2 | 3 | 4;
+  /** Thumbnail crop, as a CSS aspect-ratio. */
+  aspect?: string;
+  /** prose: the 720px reading column. wide: the 1084px content column. */
+  width?: "prose" | "wide";
+}
+
+const { items, caption, columns = 3, aspect = "4 / 3", width = "prose" } = Astro.props;
+// Each gallery is its own sequence in the viewer, named from its images so builds are stable.
+let hash = 0;
+for (const ch of items.map((i) => i.src.src).join("|")) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
+const group = `gallery-${(hash >>> 0).toString(36)}`;
+const colWidth = width === "wide" ? 1084 : 720;
+const thumb = Math.ceil(colWidth / columns);
+const sizes = `(max-width: 720px) 50vw, ${thumb}px`;
+---
+
+<figure class="gallery" data-width={width} data-lightbox-group={group} style={`--cols: ${columns}; --aspect: ${aspect};`}>
+  <ul>
+    {items.map((item) => (
+      <li>
+        <Image
+          src={item.src}
+          alt={item.alt}
+          widths={[thumb, thumb * 2, Math.min(item.src.width, 2400)]}
+          sizes={sizes}
+          data-lightbox
+          data-lightbox-caption={item.caption}
+        />
+      </li>
+    ))}
+  </ul>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+  .gallery[data-width="wide"] {
+    --g-w: min(var(--content-max), 100vw - 2 * var(--gutter));
+    width: var(--g-w);
+    max-width: none;
+    margin-inline: calc((100% - var(--g-w)) / 2);
+  }
+  ul {
+    display: grid;
+    grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  li { margin: 0; }
+  .gallery :global(img) {
+    width: 100%;
+    aspect-ratio: var(--aspect);
+    object-fit: cover;
+    border: 1px solid var(--rule);
+  }
+  @media (max-width: 720px) {
+    ul { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  }
+</style>

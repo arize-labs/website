@@ -1,0 +1,33 @@
+---
+/**
+ * Makes anything full screen: a wide table, an embed, a video. The content
+ * is moved into the viewer live (and back on close), so it keeps working,
+ * and it browses with the page's other images and figures unless it has a
+ * `group`.
+ *
+ *   <Expandable title="Every run, by agent">
+ *     | Agent | Turns | ... |
+ *     <Fragment slot="caption">Medians over 40 tasks.</Fragment>
+ *   </Expandable>
+ *
+ * Note that an iframe reloads when it moves, except in browsers with
+ * Node.moveBefore(). See DESIGN.md, "Full screen".
+ */
+export interface Props {
+  /** The item's name in the viewer, for screen readers and thumbnails. */
+  title: string;
+  /** Browse with only the items in this group. */
+  group?: string;
+}
+const { title, group } = Astro.props;
+---
+
+<figure class="expandable" data-lightbox data-lightbox-title={title} data-lightbox-group={group}>
+  <slot />
+  {Astro.slots.has("caption") && <figcaption><slot name="caption" /></figcaption>}
+</figure>
+
+<style>
+  .expandable { background: var(--bg); }
+  .expandable :global(> .lb-expand) { top: var(--space-2); right: var(--space-2); }
+</style>

@@ -1,0 +1,273 @@
+/*
+ * The full screen viewer (lightbox.ts) and the buttons that open it.
+ * Every value is a token from tokens.css, except breakpoints.
+ */
+
+/* ---- On the page ------------------------------------------------------ */
+
+/* While open, the page under the viewer stays put. */
+html[data-lb-open] { overflow: hidden; scrollbar-gutter: stable; }
+
+/* The box an image (or other item) sits in, so its button can take the corner. */
+.lb-frame { position: relative; display: block; }
+.lb-frame > img { cursor: zoom-in; }
+
+/* The same 30px square as a figure's play buttons, shown like a code block's
+   Copy button: on hover or focus with a mouse, always on touch screens. */
+.lb-expand {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--soft);
+  cursor: zoom-in;
+  opacity: 0;
+  transition: opacity 120ms, color 150ms, border-color 150ms;
+}
+.lb-expand svg, .fig-btn[data-fig-expand] svg { width: 14px; height: 14px; }
+.lb-frame:hover > .lb-expand, .lb-frame:focus-within > .lb-expand { opacity: 1; }
+@media (hover: none) { .lb-expand { opacity: 1; } }
+.lb-expand:hover { color: var(--fg); border-color: var(--fg); }
+.lb-expand:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+.fig-btn[data-fig-expand] { cursor: zoom-in; }
+
+/* An image being viewed lifts off the page; its place stays empty until it lands back. */
+img[data-lb-active] { visibility: hidden; }
+
+/* Holds a live item's place (and its figure number) while it's in the viewer. */
+.lb-placeholder { border: 1px dashed var(--rule); }
+.lb-placeholder[data-fig] { counter-increment: fig; }
+
+/* ---- The viewer ------------------------------------------------------- */
+
+.lb {
+  --lb-side: calc(var(--space-7) + 2 * var(--space-4));
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  overflow: hidden;
+  outline: none;
+}
+.lb[open] {
+  display: grid;
+  grid-template-columns: var(--lb-side) minmax(0, 1fr) var(--lb-side);
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "top top top"
+    "prev stage next"
+    "cap cap cap"
+    "thumbs thumbs thumbs";
+}
+.lb::backdrop { background: transparent; }
+
+/* The ground: the page, nearly covered, under the figures' dot ground. */
+.lb-veil {
+  grid-area: 1 / 1 / -1 / -1;
+  background:
+    var(--fig-dot-ground) center / var(--dot-pitch) var(--dot-pitch),
+    var(--lb-veil);
+  -webkit-backdrop-filter: blur(var(--space-3));
+  backdrop-filter: blur(var(--space-3));
+}
+.lb > :not(.lb-veil) { position: relative; z-index: 1; }
+
+/* Top bar: where you are, and the way out. */
+.lb-top {
+  grid-area: top;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-5);
+  padding: var(--space-4) var(--space-4) var(--space-2) var(--space-5);
+}
+.lb-count, .lb-hint {
+  font: 500 var(--text-micro) / 1 var(--font-mono);
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  color: var(--dim);
+}
+.lb-count { margin-right: auto; }
+.lb-count b { font-weight: 500; color: var(--fg); }
+.lb-hint { display: flex; align-items: center; gap: var(--space-2); }
+.lb-hint kbd {
+  min-width: 2.2em;
+  margin-right: var(--space-1);
+  padding: var(--space-1) 0.5em;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  font: inherit;
+  text-align: center;
+  color: var(--soft);
+}
+.lb-hint span { display: flex; align-items: center; gap: var(--space-1); }
+.lb-hint span + span { margin-left: var(--space-3); }
+.lb[data-single] :is(.lb-count, .lb-hint-browse) { display: none; }
+
+.lb-btn {
+  display: grid;
+  place-items: center;
+  width: var(--space-7);
+  height: var(--space-7);
+  padding: 0;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--soft);
+  cursor: pointer;
+  transition: color 150ms, border-color 150ms, opacity 150ms;
+}
+.lb-btn svg { width: 18px; height: 18px; }
+.lb-btn:hover:not(:disabled) { color: var(--fg); border-color: var(--fg); }
+.lb-btn:disabled { opacity: 0.3; cursor: default; }
+.lb-prev { grid-area: prev; place-self: center; }
+.lb-next { grid-area: next; place-self: center; }
+/* Pinned to the middle of the screen, so they don't move as captions change
+   the stage's height. Their grid columns still keep the item clear of them. */
+@media (min-width: 721px) {
+  .lb .lb-prev, .lb .lb-next { position: fixed; top: 50%; translate: 0 -50%; }
+  .lb .lb-prev { left: var(--space-4); }
+  .lb .lb-next { right: var(--space-4); }
+}
+.lb[data-single] :is(.lb-prev, .lb-next, .lb-thumbs) { display: none; }
+
+/* The stage: one slide at a time, two while stepping. */
+.lb-stage {
+  grid-area: stage;
+  overflow: hidden;
+  touch-action: pan-y pinch-zoom;
+}
+.lb[data-zoomed] .lb-stage { touch-action: auto; }
+.lb-slide {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+/* Images: on the figure ground, framed like a figure. */
+.lb-media {
+  position: relative;
+  border: 1px solid var(--rule);
+  background: var(--fig-ground);
+  box-shadow: var(--lb-shadow);
+}
+.lb-media img { display: block; max-width: none; }
+
+/* Live items (figures, anything with data-lightbox): the real element, moved in. */
+.lb .lb-slide > .lb-live { max-width: none; margin: 0; }
+.lb .lb-live > .fig-frame { box-shadow: var(--lb-shadow); }
+.lb .lb-live > figcaption, .lb .lb-live > .lb-expand, .lb .lb-live [data-fig-expand] { display: none; }
+/* Full screen is the overview: diagrams fit rather than scroll (pinch to zoom on a phone). */
+.lb .d-svg { min-width: 0; }
+
+/* Caption: the reading column's width, left-aligned, under the item. */
+.lb-cap {
+  grid-area: cap;
+  padding: var(--space-3) var(--space-5) var(--space-2);
+}
+.lb-cap-inner {
+  max-width: var(--prose-max);
+  min-height: calc(2 * 1.55em);
+  max-height: 24vh;
+  margin-inline: auto;
+  overflow-y: auto;
+  font-size: var(--text-body);
+  line-height: 1.55;
+  color: var(--soft);
+  text-wrap: pretty;
+}
+.lb-cap[data-empty] .lb-cap-inner { min-height: 0; }
+.lb-cap a { color: var(--fg); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.lb-cap a:hover { color: var(--accent); }
+.lb-cap code { padding: 0.1em 0.3em; background: var(--placeholder); font: 0.88em var(--font-mono); }
+
+/* Thumbnails: the whole sequence, the current one ruled in accent. */
+.lb-thumbs {
+  grid-area: thumbs;
+  display: flex;
+  justify-content: safe center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5) var(--space-4);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.lb-thumbs::-webkit-scrollbar { display: none; }
+.lb-thumb {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--space-8);
+  height: var(--space-7);
+  padding: 0;
+  border: 1px solid var(--rule);
+  background: var(--fig-ground);
+  opacity: 0.7;
+  cursor: pointer;
+  overflow: hidden;
+  transition: opacity 150ms, border-color 150ms;
+}
+.lb-thumb:hover { opacity: 1; border-color: var(--fig-line-strong); }
+.lb-thumb[aria-current] { opacity: 1; border-color: var(--fg); }
+.lb-thumb[aria-current]::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 2px;
+  background: var(--accent);
+}
+.lb-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.lb-thumb[data-kind="live"] {
+  background: var(--fig-dot-ground) center / 6px 6px, var(--fig-ground);
+}
+.lb-thumb svg { width: 100%; height: 100%; min-width: 0; padding: var(--space-1); pointer-events: none; }
+.lb-thumb-num {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  padding: 1px 3px;
+  background: var(--fig-ground);
+  font: 500 9px / 1 var(--font-mono);
+  letter-spacing: var(--tracking-micro);
+  color: var(--dim);
+}
+.lb-thumb[aria-current] .lb-thumb-num { color: var(--fg); }
+
+@media (max-width: 720px) {
+  .lb[open] {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "top top top"
+      "stage stage stage"
+      "cap cap cap"
+      "prev thumbs next";
+  }
+  .lb-top { padding: var(--space-3) var(--space-3) var(--space-1) var(--space-4); }
+  .lb-hint { display: none; }
+  .lb-slide { padding: var(--space-3); }
+  .lb-cap { padding: var(--space-2) var(--space-4); }
+  .lb-cap-inner { font-size: var(--text-small); }
+  .lb-prev, .lb-next { margin: 0 var(--space-3) var(--space-3); }
+  .lb-thumbs { justify-content: safe center; padding: 0 var(--space-2) var(--space-3); }
+  .lb-thumb { width: var(--space-7); height: var(--space-7); }
+  .lb-thumb svg { padding: 2px; }
+}
+@media (hover: none) { .lb-hint { display: none; } }

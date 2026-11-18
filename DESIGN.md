@@ -83,6 +83,10 @@ elements inside a single post.
   border.
 - **Captions.** Put the image in a `<figure>` with a `<figcaption>`. Captions
   are `--text-small`, `--soft`, `--space-2` below the figure.
+- **Galleries.** Several images that belong together go in
+  [`<Gallery items={[…]} />`](./src/components/lightbox/Gallery.astro), a
+  grid of cropped thumbnails that browse as their own sequence full screen,
+  each with its own caption.
 - **Figures.** Diagrams and charts are Astro components built from the
   figure primitives (see [Figures](#figures)), not HTML pages in iframes.
   [`<Embed>`](./src/components/Embed.astro) is only for third-party pages we
@@ -107,11 +111,12 @@ in one place.
 figure the same parts, top to bottom:
 
 1. **Header.** `Fig. 01` and the title in mono caps. Figures number
-   themselves in the order they appear. Animated figures get pause and
-   replay buttons on the right.
-2. **Frame.** `--fig-ground` with a `--rule` border and registration crosses
-   on the corners. Diagrams sit on a dot ground (`ground="dots"`), fainter
-   than the page margins' (`--fig-dot`); charts sit on a plain ground. Zones
+   themselves in the order they appear. On the right, a "View full screen"
+   button (see [Full screen](#full-screen)), after the pause and replay
+   buttons on animated figures.
+2. **Frame.** `--fig-ground` with a `--rule` border. Diagrams sit on a dot
+   ground (`ground="dots"`), fainter than the page margins' (`--fig-dot`);
+   charts sit on a plain ground. Zones
    and ghost nodes are opaque, so the dots stop at their edges and never sit
    behind text. Only zones nested inside one another use `fill="tint"`, so
    they darken as they nest.
@@ -179,6 +184,48 @@ Checklist for a new figure:
 - [ ] Only the encodings above; tokens for every colour.
 - [ ] Checked at 1440px and 390px, light and dark, with motion and with
       reduced motion.
+
+## Full screen
+
+Every image in prose, the post cover and every figure can open full screen
+([`lightbox/`](./src/components/lightbox/)), loaded on every page by
+`BaseLayout`. Nothing needs adding to a post: images get a "View full
+screen" button in their top-right corner (on hover or focus, always on
+touch screens, and clicking the image works too), and figures get one in
+their header, next to the play buttons.
+
+**The viewer.** The page, nearly covered, under the figures' dot ground; the
+item in the middle at the largest size that fits, framed with a
+`--rule` border; its caption under it in the reading column; and,
+when there's more than one item, a counter (`03 / 12`), previous and next
+buttons and a strip of thumbnails, the current one ruled in accent.
+Images open at the largest file in their `srcset`, never past their own
+size. Figures are moved into the viewer live and back on close, so
+animations keep playing and tooltips and variant controls keep working;
+diagrams fit the screen there rather than scrolling sideways.
+
+**Browsing.** Everything on a page is one sequence, in reading order.
+Arrow keys, Page Up and Down, Home and End move through it, as do sideways
+swipes on touch screens and trackpads. Esc, the close button or a click on
+the ground closes it, and the page lands on the item last viewed. Focus
+stays in the viewer while it's open and goes back to the item's button.
+With reduced motion, items fade rather than fly and slide.
+
+**Primitives.** For anything the viewer doesn't pick up on its own:
+
+| Use | For |
+|---|---|
+| `<Gallery items caption columns aspect width>` | A grid of images that browse as their own sequence |
+| `<Expandable title group>` | Anything else, shown live: a wide table, an embed, a video |
+| `data-lightbox` | Enrols an element (an `<img>`, or anything to show live) |
+| `data-lightbox-group="name"` | On an item or an ancestor: browse only that group |
+| `data-lightbox-caption="…"` | The caption, when the item has no `<figcaption>` |
+| `data-lightbox-title="…"` | The item's name for screen readers and thumbnails |
+| `data-lightbox-src="…"` | A larger file to show full screen (images) |
+| `data-lightbox-off` | On an item or an ancestor: leave it out |
+| `openLightbox(el)`, `openLightbox([{ src, alt, caption }], i)` | Open from a script, on an item or on images not on the page |
+
+Images inside a link keep the link and aren't enrolled.
 
 ## Social cards
 
