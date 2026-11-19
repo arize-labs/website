@@ -9,8 +9,8 @@ const { title, description } = page.data;
 const { Content } = await render(page);
 ---
 
-<PageLayout heading={title} intro={description} width="prose">
-  <div class="prose manifesto">
+<PageLayout heading={title} intro={description} width="prose" markdown>
+  <div class="prose manifesto" data-markdown>
     <Content />
   </div>
 </PageLayout>

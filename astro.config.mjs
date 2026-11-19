@@ -7,6 +7,8 @@ import { defineMdastPlugin } from "satteri";
 import pierreLight from "@pierre/theme/pierre-light";
 import pierreDark from "@pierre/theme/pierre-dark";
 
+import llmsTxt from "./src/integrations/llms-txt.mjs";
+
 /**
  * Pierre's themes are typed as readonly objects, which Shiki's mutable theme
  * type doesn't accept; the data is a standard TextMate theme, so pass it as one.
@@ -49,7 +51,9 @@ export default defineConfig({
   site: SITE,
   base: BASE,
   // Fully static: GitHub Pages serves the built files and runs no server code.
-  integrations: [mdx(), sitemap()],
+  // llms.txt, llms-full.txt and a markdown copy of each post and page: see
+  // src/integrations/llms-txt.mjs.
+  integrations: [mdx(), sitemap(), llmsTxt()],
   // Code blocks use the Pierre theme (https://diffs.com/theme). Shiki emits
   // the light colors inline and the dark ones as --shiki-dark variables;
   // global.css switches to them with the site's theme.

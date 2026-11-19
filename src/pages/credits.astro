@@ -12,8 +12,9 @@ const groups: [string, Credit[]][] = [
   heading="Credits"
   intro="Work by others that this site is built with, and the licences it is used under."
   width="prose"
+  markdown
 >
-  <div class="credits">
+  <div class="credits" data-markdown>
     {groups.map(([heading, items]) => (
       <section aria-labelledby={`credits-${heading.toLowerCase()}`}>
         <h2 id={`credits-${heading.toLowerCase()}`} class="eyebrow">{heading}</h2>

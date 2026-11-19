@@ -13,8 +13,10 @@ export interface Props {
   links: { network: Network; href: string; name: string }[];
   /** Extra rel values, such as "me" for a person's own profiles. */
   rel?: string;
+  /** Leave the row out of the page's markdown copy (share buttons). */
+  markdown?: boolean;
 }
-const { label, links, rel = "" } = Astro.props;
+const { label, links, rel = "", markdown = true } = Astro.props;
 
 const ICONS: Record<Network, string> = {
   x: "M17.75 3h3.07l-6.7 7.66L22 21h-6.17l-4.83-6.32L5.47 21H2.4l7.17-8.2L2 3h6.32l4.37 5.78zm-1.08 16.17h1.7L7.4 4.73H5.58z",
@@ -26,7 +28,7 @@ const ICONS: Record<Network, string> = {
 };
 ---
 
-<span class="social-links">
+<span class="social-links" data-markdown-ignore={markdown ? undefined : ""}>
   {label && <span class="label eyebrow">{label}</span>}
   {links.map((link) => (
     <a href={link.href} target="_blank" rel={`${rel} noopener noreferrer`.trim()} aria-label={link.name} title={link.name}>

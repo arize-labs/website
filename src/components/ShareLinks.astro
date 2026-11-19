@@ -10,6 +10,7 @@ const url = new URL(Astro.url.pathname, Astro.site).href;
 ---
 
 <SocialLinks
+  markdown={false}
   label="Share"
   links={[
     { network: "x", name: "Share on X", href: `https://x.com/intent/post?${new URLSearchParams({ url, text: title })}` },

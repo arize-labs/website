@@ -10,6 +10,7 @@
 import { site } from "../site.config";
 import { defaultSocialImage, type SocialImage } from "../lib/og/cards";
 import { stripBase, withBase } from "../lib/url";
+import { markdownRouteOf } from "../integrations/llms-txt.mjs";
 
 export interface Author {
   name: string;
@@ -42,9 +43,14 @@ export interface Props {
   /** schema.org data for the page; the home page describes the WebSite. */
   jsonLd?: Record<string, unknown>;
   noindex?: boolean;
+  /**
+   * The page has a markdown copy at its URL plus `.md`, drawn from its
+   * `data-markdown` element by src/integrations/llms-txt.mjs; link to it.
+   */
+  markdown?: boolean;
 }
 
-const { title, description = site.description, type = "website", article, video, noindex = false } = Astro.props;
+const { title, description = site.description, type = "website", article, video, noindex = false, markdown = false } = Astro.props;
 
 const abs = (url: string) => new URL(url, Astro.site).href;
 /** "@handle" from an X profile URL. */
@@ -58,6 +64,8 @@ const fullTitle = title ? `${title} · ${site.name}` : site.name;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const image = Astro.props.image ?? defaultSocialImage(Astro.url.pathname, title);
 const imageUrl = abs(image.url);
+// The page's route with no trailing slash (but the home page's), as its links are written.
+const route = withBase(stripBase(Astro.url.pathname).replace(/(.)\/$/, "$1"));
 const creator = article?.authors.map((a) => handle(a.x)).find(Boolean);
 
 const jsonLd =
@@ -75,6 +83,8 @@ const jsonLd =
 <link rel="apple-touch-icon" href={withBase("/apple-touch-icon.png")} />
 <link rel="sitemap" href={withBase("/sitemap-index.xml")} />
 <link rel="alternate" type="application/rss+xml" title={`${site.name} blog`} href={abs(withBase("/rss.xml"))} />
+{markdown && <link rel="alternate" type="text/markdown" href={markdownRouteOf(route)} />}
+<link rel="describedby" type="text/plain" href={withBase("/llms.txt")} />
 
 <title>{fullTitle}</title>
 <meta name="description" content={description} />

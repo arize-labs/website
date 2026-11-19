@@ -83,8 +83,9 @@ const jsonLd = {
   video={socialVideo}
   article={{ publishedTime: pubDate, modifiedTime: updatedDate, authors: people, tags }}
   jsonLd={jsonLd}
+  markdown
 >
-  <article class="post">
+  <article class="post" data-markdown>
     <PageHeader heading={title} intro={description} width="prose">
       <Fragment slot="meta">
         <span>

@@ -41,13 +41,13 @@ const jsonLd = {
 };
 ---
 
-<BaseLayout title={name} description={`${name}, ${role} at Arize Labs.`} type="profile" image={image} jsonLd={jsonLd}>
-  <article class="profile">
+<BaseLayout title={name} description={`${name}, ${role} at Arize Labs.`} type="profile" image={image} jsonLd={jsonLd} markdown>
+  <article class="profile" data-markdown>
     <figure class="headshot">
       {avatar ? <Image src={avatar} alt="" widths={[400, 800]} sizes="(max-width: 840px) 60vw, 360px" /> : <span class="placeholder">[ photo ]</span>}
     </figure>
     <div class="details">
-      <p class="eyebrow"><a href={withBase("/team")}>Team</a></p>
+      <p class="eyebrow" data-markdown-ignore><a href={withBase("/team")}>Team</a></p>
       <h1>{name}</h1>
       <p class="role">{role}</p>
       <div class="prose bio"><Content /></div>
