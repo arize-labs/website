@@ -8,6 +8,10 @@ astro dev --background
 
 Manage the background server with `astro dev stop`, `astro dev status`, and `astro dev logs`.
 
+The site is served under a base path (`/website` on GitHub Pages; dev runs at
+`localhost:4321/website/`). Wrap internal root-relative links in `withBase`
+from `src/lib/url.ts`; never hard-code `href="/..."` in components.
+
 ## Design
 
 Follow [`DESIGN.md`](./DESIGN.md) when adding or changing pages: pick the

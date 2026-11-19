@@ -1,5 +1,6 @@
 ---
 import { site } from "../site.config";
+import { withBase } from "../lib/url";
 import ArizeLogo from "../assets/arize/arize-logo.svg";
 import ThemeToggle from "./ThemeToggle.astro";
 
@@ -14,9 +15,9 @@ const social = Object.entries(site.social);
     </a>
     <ul class="links">
       {site.nav.map((item) => <li><a href={item.href}>{item.label}</a></li>)}
-      <li><a href="/brand">Brand</a></li>
-      <li><a href="/credits">Credits</a></li>
-      <li><a href="/rss.xml">RSS</a></li>
+      <li><a href={withBase("/brand")}>Brand</a></li>
+      <li><a href={withBase("/credits")}>Credits</a></li>
+      <li><a href={withBase("/rss.xml")}>RSS</a></li>
     </ul>
     <ul class="links">
       {social.map(([name, href]) => <li><a href={href} rel="me noopener">{name}</a></li>)}

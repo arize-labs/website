@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import { withBase } from "../lib/url";
 import Hero from "../components/sections/Hero.astro";
 import HeroPhoto from "../components/heroes/HeroPhoto.astro";
 import Section from "../components/sections/Section.astro";
@@ -63,12 +64,12 @@ const team = await getTeam();
   </Section>
 
   <Section id="news" heading="News" intro="News, writing and resources about the open-source projects.">
-    <a slot="action" class="button" href="/blog">All posts</a>
+    <a slot="action" class="button" href={withBase("/blog")}>All posts</a>
     <PostGrid posts={latestPosts} />
   </Section>
 
   <Section id="team" heading="Team" intro="The engineers, researchers and designers behind Arize Labs.">
-    <a slot="action" class="button" href="/team">Meet the team</a>
+    <a slot="action" class="button" href={withBase("/team")}>Meet the team</a>
     <TeamGrid members={team} />
   </Section>
 </BaseLayout>

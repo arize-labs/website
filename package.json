@@ -12,10 +12,10 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/markdown-satteri": "^0.4.9",
     "@astrojs/mdx": "^8.1.5",
     "@astrojs/rss": "^4.0.19",
     "@astrojs/sitemap": "^3.7.4",
-    "@astrojs/vercel": "^11.0.21",
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@fontsource-variable/urbanist": "^5.3.0",
     "@fontsource/geist-mono": "^5.3.0",
@@ -23,10 +23,12 @@
     "@pierre/theme": "^2.0.0",
     "astro": "^7.4.11",
     "satori": "^0.63.2",
+    "satteri": "^0.11.7",
     "sharp": "^0.35.5",
     "three": "0.186.1"
   },
   "private": true,
+  "packageManager": "pnpm@11.25.0",
   "devDependencies": {
     "@astrojs/check": "^0.9.12",
     "@types/three": "0.186.0",

@@ -9,6 +9,7 @@
  */
 import { site } from "../site.config";
 import { defaultSocialImage, type SocialImage } from "../lib/og/cards";
+import { stripBase, withBase } from "../lib/url";
 
 export interface Author {
   name: string;
@@ -52,6 +53,7 @@ const handle = (url?: string) => {
   return name ? `@${name}` : undefined;
 };
 
+const home = abs(withBase("/"));
 const fullTitle = title ? `${title} · ${site.name}` : site.name;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const image = Astro.props.image ?? defaultSocialImage(Astro.url.pathname, title);
@@ -60,19 +62,19 @@ const creator = article?.authors.map((a) => handle(a.x)).find(Boolean);
 
 const jsonLd =
   Astro.props.jsonLd ??
-  (Astro.url.pathname === "/"
-    ? { "@context": "https://schema.org", "@type": "WebSite", name: site.name, url: Astro.site?.href, description: site.description, image: imageUrl }
+  (stripBase(Astro.url.pathname) === "/"
+    ? { "@context": "https://schema.org", "@type": "WebSite", name: site.name, url: home, description: site.description, image: imageUrl }
     : undefined);
 ---
 
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="generator" content={Astro.generator} />
-<link rel="icon" href="/favicon.ico" sizes="48x48" />
-<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-<link rel="sitemap" href="/sitemap-index.xml" />
-<link rel="alternate" type="application/rss+xml" title={`${site.name} blog`} href={new URL("rss.xml", Astro.site)} />
+<link rel="icon" href={withBase("/favicon.ico")} sizes="48x48" />
+<link rel="icon" type="image/svg+xml" href={withBase("/favicon.svg")} />
+<link rel="apple-touch-icon" href={withBase("/apple-touch-icon.png")} />
+<link rel="sitemap" href={withBase("/sitemap-index.xml")} />
+<link rel="alternate" type="application/rss+xml" title={`${site.name} blog`} href={abs(withBase("/rss.xml"))} />
 
 <title>{fullTitle}</title>
 <meta name="description" content={description} />

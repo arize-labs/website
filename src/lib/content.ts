@@ -1,4 +1,5 @@
 import { getCollection, type CollectionEntry } from "astro:content";
+import { withBase } from "./url";
 
 export type Post = CollectionEntry<"posts">;
 export type Member = CollectionEntry<"team">;
@@ -38,6 +39,6 @@ export async function getTags(): Promise<{ name: string; slug: string; count: nu
 export const readingMinutes = (post: Post) =>
   Math.max(1, Math.round((post.body ?? "").split(/\s+/).filter(Boolean).length / 230));
 
-export const postUrl = (post: Post) => `/blog/${post.id}`;
-export const memberUrl = (member: Member | { id: string }) => `/team/${member.id}`;
-export const tagUrl = (tag: string) => `/blog/tags/${tagSlug(tag)}`;
+export const postUrl = (post: Post) => withBase(`/blog/${post.id}`);
+export const memberUrl = (member: Member | { id: string }) => withBase(`/team/${member.id}`);
+export const tagUrl = (tag: string) => withBase(`/blog/tags/${tagSlug(tag)}`);

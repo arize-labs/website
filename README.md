@@ -13,10 +13,27 @@ labelled placeholder frames.
 | Command | Does |
 |---|---|
 | `pnpm install` | Install dependencies |
-| `pnpm dev` | Dev server at `localhost:4321` (drafts visible) |
+| `pnpm dev` | Dev server at `localhost:4321/website/` (drafts visible) |
 | `pnpm check` | Type-check `.astro` and `.ts` files |
-| `pnpm build` | Type-check, then build to `dist/` and `.vercel/output/` |
+| `pnpm build` | Type-check, then build to `dist/` |
 | `pnpm preview` | Serve the build locally |
+
+## Deploying
+
+Pushes to `main` deploy to GitHub Pages at
+<https://arize-labs.github.io/website/> via
+[`.github/workflows/deploy.yml`](./.github/workflows/deploy.yml) (Astro's
+[`withastro/action`](https://github.com/withastro/action)). The site is fully
+static.
+
+The site is served under a base path, `/website`. Write internal links
+root-relative and pass them through `withBase` from `src/lib/url.ts`
+(`withBase("/blog")` → `/website/blog`). In Markdown and MDX, root-relative
+Markdown links and images (`[x](/blog)`, `![x](/a.png)`) are prefixed
+automatically. Raw HTML and JSX attributes (`<a href="/blog">`) are not, so use
+Markdown syntax for those. The workflow reads the Pages URL at build time,
+so a custom domain set in the repo's Pages settings (served at `/`) needs no
+code change.
 
 ## Layout
 

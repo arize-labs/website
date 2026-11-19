@@ -1,5 +1,6 @@
 ---
 import type { GetStaticPaths } from "astro";
+import { withBase } from "../../../lib/url";
 import PageLayout from "../../../layouts/PageLayout.astro";
 import PostList from "../../../components/PostList.astro";
 import { getPosts, getTags, tagSlug, type Post } from "../../../lib/content";
@@ -20,7 +21,7 @@ const { name, posts } = Astro.props;
 ---
 
 <PageLayout eyebrow="Tag" heading={name} title={`Posts tagged “${name}”`} description={`Posts tagged “${name}”.`} noindex>
-  <a slot="header" class="back eyebrow" href="/blog">← All posts</a>
+  <a slot="header" class="back eyebrow" href={withBase("/blog")}>← All posts</a>
   <PostList posts={posts} />
 </PageLayout>
 

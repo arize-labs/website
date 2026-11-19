@@ -1,5 +1,6 @@
 ---
 import { site } from "../site.config";
+import { withBase } from "../lib/url";
 import Wordmark from "./Wordmark.astro";
 
 const path = Astro.url.pathname;
@@ -8,7 +9,7 @@ const isCurrent = (href: string) => !href.includes("#") && (path === href || pat
 
 <header class="site-header page-grid">
   <div class="bar">
-    <a class="home" href="/" aria-label={`${site.name} home`}><Wordmark /></a>
+    <a class="home" href={withBase("/")} aria-label={`${site.name} home`}><Wordmark /></a>
 
     <nav class="nav" aria-label="Main">
       <ul>

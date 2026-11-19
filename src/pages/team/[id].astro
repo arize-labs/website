@@ -1,5 +1,6 @@
 ---
 import type { GetStaticPaths } from "astro";
+import { withBase } from "../../lib/url";
 import { Image } from "astro:assets";
 import { render } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
@@ -33,7 +34,7 @@ const jsonLd = {
     "@type": "Person",
     name,
     jobTitle: role,
-    worksFor: { "@type": "Organization", name: "Arize Labs", url: Astro.site?.href },
+    worksFor: { "@type": "Organization", name: "Arize Labs", url: new URL(withBase("/"), Astro.site).href },
     image: new URL(image.url, Astro.site).href,
     sameAs: linkList.map((l) => l.href),
   },
@@ -46,7 +47,7 @@ const jsonLd = {
       {avatar ? <Image src={avatar} alt="" widths={[400, 800]} sizes="(max-width: 840px) 60vw, 360px" /> : <span class="placeholder">[ photo ]</span>}
     </figure>
     <div class="details">
-      <p class="eyebrow"><a href="/team">Team</a></p>
+      <p class="eyebrow"><a href={withBase("/team")}>Team</a></p>
       <h1>{name}</h1>
       <p class="role">{role}</p>
       <div class="prose bio"><Content /></div>

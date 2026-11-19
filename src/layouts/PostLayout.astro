@@ -1,5 +1,6 @@
 ---
 import { Image, getImage } from "astro:assets";
+import { withBase } from "../lib/url";
 import { getEntries } from "astro:content";
 import BaseLayout from "./BaseLayout.astro";
 import PageHeader from "../components/PageHeader.astro";
@@ -17,7 +18,14 @@ export interface Props {
   post: Post;
 }
 const { post } = Astro.props;
-const { title, description, pubDate, updatedDate, authors, tags, cover, video } = post.data;
+const { title, description, pubDate, updatedDate, authors, tags, cover } = post.data;
+// A video's `src` and `captions` may be root-relative files under public/, so they carry the base path.
+const rawVideo = post.data.video;
+const video = rawVideo && {
+  ...rawVideo,
+  src: rawVideo.src && withBase(rawVideo.src),
+  captions: rawVideo.captions && withBase(rawVideo.captions),
+};
 const members = await getEntries(authors);
 const people: Author[] = members.map((m) => ({ name: m.data.name, url: memberUrl(m), x: m.data.links.x }));
 const minutes = readingMinutes(post);
@@ -48,7 +56,7 @@ const jsonLd = {
   datePublished: pubDate.toISOString(),
   dateModified: (updatedDate ?? pubDate).toISOString(),
   author: people.map((p) => ({ "@type": "Person", name: p.name, url: p.url && abs(p.url) })),
-  publisher: { "@type": "Organization", name: site.name, url: Astro.site?.href, logo: abs("/apple-touch-icon.png") },
+  publisher: { "@type": "Organization", name: site.name, url: abs(withBase("/")), logo: abs(withBase("/apple-touch-icon.png")) },
   image: abs(image.url),
   keywords: tags.length ? tags.join(", ") : undefined,
   ...(video && poster

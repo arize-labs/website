@@ -10,6 +10,7 @@
  * - Everything else (tag pages, 404): the site card.
  */
 import { getEntries, getEntry } from "astro:content";
+import { stripBase, withBase } from "../url";
 import { getPosts, getTeam, readingMinutes, type Member, type Post } from "../content";
 import { site } from "../../site.config";
 import { OG_HEIGHT, OG_WIDTH, cardFormat, type Card } from "./render";
@@ -45,10 +46,10 @@ export interface SocialImage {
 
 /** The generated card for a page that doesn't pass its own: its PAGES card, or the site card. */
 export function defaultSocialImage(pathname: string, title?: string): SocialImage {
-  const [first, second, ...more] = pathname.split("/").filter(Boolean);
+  const [first, second, ...more] = stripBase(pathname).split("/").filter(Boolean);
   const own = first in PAGES && (second === undefined || (first === "blog" && /^\d+$/.test(second) && !more.length));
   return {
-    url: `/og/${cardFile(own ? first : SITE_CARD)}`,
+    url: withBase(`/og/${cardFile(own ? first : SITE_CARD)}`),
     width: OG_WIDTH,
     height: OG_HEIGHT,
     type: MIME.png,
@@ -71,7 +72,7 @@ export function memberSocialImage(member: Member): SocialImage {
 
 function generated(key: string, panel: Card["panel"], alt: string): SocialImage {
   const format = cardFormat({ panel });
-  return { url: `/og/${cardFile(key, format)}`, width: OG_WIDTH, height: OG_HEIGHT, type: MIME[format], alt };
+  return { url: withBase(`/og/${cardFile(key, format)}`), width: OG_WIDTH, height: OG_HEIGHT, type: MIME[format], alt };
 }
 
 function postPanel(post: Post): Card["panel"] {
