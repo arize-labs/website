@@ -14,16 +14,37 @@ import {
   nut,
   triangle,
 } from "../lib/brand";
+import { rasters } from "../lib/brand-raster";
+import { withBase } from "../lib/url";
 
 const fmt = (n: number, digits = 1) => String(Number(n.toFixed(digits)));
 const pct = (n: number) => `${fmt((n / SIDE) * 100)}%`;
 const points = (pts: [number, number][]) => pts.map(([x, y]) => `${fmt(x, 2)},${fmt(y, 2)}`).join(" ");
 
-const downloads = [
-  { artwork: art.lockup, label: "Lockup" },
-  { artwork: art.mark, label: "Mark" },
-  { artwork: art.wordmark, label: "Wordmark" },
-];
+/*
+ * Downloads: a preview of each variant on the ground it is for, with its
+ * files. The PNGs are transparent, in ink and in paper; the SVG is one file,
+ * listed with the ink variant.
+ */
+const artworks = [
+  ["lockup", "Lockup"],
+  ["mark", "Mark"],
+  ["wordmark", "Wordmark"],
+] as const;
+const variants = (["ink", "paper"] as const).flatMap((tone) =>
+  artworks.map(([name, label]) => {
+    const png = rasters.find((r) => r.name === name && r.tone === tone)!;
+    return {
+      name,
+      label,
+      tone,
+      files: [
+        { file: png.file, url: withBase(`/brand/${png.file}`), format: "PNG" },
+        ...(tone === "ink" ? [{ file: art[name].file, url: art[name].url, format: "SVG" }] : []),
+      ],
+    };
+  }),
+);
 
 /* Mark construction. */
 const tipCutPoint = (() => {
@@ -116,12 +137,24 @@ const misuse = [
   <figure class="hero">
     <BrandArt name="lockup" label="Arize Labs" />
   </figure>
-  <ul class="downloads" aria-label="Download artwork">
-    {downloads.map(({ artwork, label }) => (
-      <li><a class="button" href={artwork.url} download={artwork.file}>{label} SVG</a></li>
+  <ul class="grid three variants" aria-label="Download artwork">
+    {variants.map(({ name, label, tone, files }) => (
+      <li>
+        <figure class:list={["panel", tone === "ink" ? "paper" : "ink"]}>
+          <div class="stage"><BrandArt name={name} label={`Arize Labs ${label.toLowerCase()} in ${tone}`} class={`v-${name}`} /></div>
+          <figcaption>
+            <span>{label} · {tone}</span>
+            <span class="files">
+              {files.map(({ file, url, format }) => (
+                <a class="button" href={url} download={file} aria-label={`Download ${label.toLowerCase()} in ${tone}, ${format}`}>{format}</a>
+              ))}
+            </span>
+          </figcaption>
+        </figure>
+      </li>
     ))}
   </ul>
-  <p class="note">Each file is single-colour outlines on a transparent ground, so it needs no font and can be set in ink or paper.</p>
+  <p class="note">Every file has a transparent ground; the panels only show the ground each variant is for. The SVG is single-colour outlines, so it needs no font and can be set in ink or paper. Where an SVG won’t do, use the PNG: ink for light grounds, paper for dark ones.</p>
 
   <Section
     id="logo"
@@ -297,7 +330,17 @@ const misuse = [
 <style>
   .hero { padding: var(--space-7) 0; border-top: 1px solid var(--fg); }
   .hero :global(svg) { max-width: 880px; }
-  .downloads { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: 0; list-style: none; }
+  /* Download variants: fixed grounds, so the caption and buttons take the panel's colours, not the theme's. */
+  .variants .panel { height: 100%; margin: 0; }
+  .variants .stage { min-height: 200px; }
+  .variants :global(.v-lockup) { max-width: 220px; }
+  .variants :global(.v-mark) { width: 96px; }
+  .variants :global(.v-wordmark) { width: 128px; }
+  .variants figure.panel figcaption { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-2) var(--space-2) 14px; border-color: color-mix(in srgb, currentColor 18%, transparent); color: inherit; }
+  .files { display: flex; gap: var(--space-2); }
+  .variants .button { border-color: currentColor; color: inherit; }
+  .variants .paper .button:is(:hover, :focus-visible) { background: var(--color-ink); color: #fff; }
+  .variants .ink .button:is(:hover, :focus-visible) { background: var(--color-paper); color: var(--color-ink); }
   .note { margin-top: var(--space-3); color: var(--dim); font-size: var(--text-small); }
 
   .grid { display: grid; gap: var(--space-4); padding: 0; list-style: none; }
